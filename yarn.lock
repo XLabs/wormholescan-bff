@@ -1304,14 +1304,16 @@
   dependencies:
     "@types/node" "*"
 
-"@wormhole-foundation/connect-sdk-aptos@^0.1.0-beta":
-  version "0.1.0-beta"
-  resolved "https://registry.yarnpkg.com/@wormhole-foundation/connect-sdk-aptos/-/connect-sdk-aptos-0.1.0-beta.tgz#efefd36d1fa5427864d6d47bbd73e8b8df19ca51"
-  integrity sha512-c7lWWueiqOWSF/wgrwzOeVDjHoSlvPvtc3O8c9CelJPbc2Bmoko4IGX22T2s2gND/0xp1CxgSb4POMz+YJIegQ==
+"@wormhole-foundation/connect-sdk-cosmwasm-core@^0.2.6":
+  version "0.2.6"
+  resolved "https://registry.yarnpkg.com/@wormhole-foundation/connect-sdk-cosmwasm-core/-/connect-sdk-cosmwasm-core-0.2.6.tgz#b5e38008b78b95cfb57e310caf8f4e98651dc24e"
+  integrity sha512-xvr2zJ0a/DscoHHCBgAF2jNw2RQKcBtptyn0Zllxq4TVAR26eKuucvGPq1zifRl5tBW5UHPW4l4WYBp2qai40Q==
   dependencies:
-    "@wormhole-foundation/connect-sdk" "*"
-    ethers "^5.7.2"
-    js-sha3 "^0.8.0"
+    "@cosmjs/cosmwasm-stargate" "^0.32.0"
+    "@cosmjs/stargate" "^0.32.0"
+    "@wormhole-foundation/connect-sdk" "^0.2.6"
+    "@wormhole-foundation/connect-sdk-cosmwasm" "^0.2.6"
+    cosmjs-types "^0.9.0"
 
 "@wormhole-foundation/connect-sdk-cosmwasm-tokenbridge@^0.2.6":
   version "0.2.6"
@@ -1412,7 +1414,7 @@
     "@wormhole-foundation/connect-sdk" "^0.2.6"
     lodash "^4.17.21"
 
-"@wormhole-foundation/connect-sdk@*", "@wormhole-foundation/connect-sdk@^0.2.6":
+"@wormhole-foundation/connect-sdk@^0.2.6":
   version "0.2.6"
   resolved "https://registry.yarnpkg.com/@wormhole-foundation/connect-sdk/-/connect-sdk-0.2.6.tgz#73868209403ec6f113552ddadc5dd495a474d1c6"
   integrity sha512-aifCBhDjz3w2lEPxQdetgXCyAWCxUzwDNFzouwiW2u1ekznJfYudlAr4jnYsfb56lgJU4U9pilz6FiYDyugZzg==

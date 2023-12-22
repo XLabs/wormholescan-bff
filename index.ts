@@ -9,7 +9,7 @@ import { ethers } from "ethers";
 import { JSONPreset } from "lowdb/node";
 
 import { getChainInfo, getEthersProvider } from "./src/environment";
-import { findBlockRangeByTimestamp } from "./src/utils";
+import { findBlockRangeByTimestamp, makeSolanaRpcRequest, wait } from "./src/utils";
 import { Network, ChainId, Wormhole, chainIdToChain } from "@wormhole-foundation/connect-sdk";
 import { SolanaPlatform } from "@wormhole-foundation/connect-sdk-solana";
 import { EvmPlatform } from "@wormhole-foundation/connect-sdk-evm";
@@ -31,12 +31,8 @@ interface InfoRequest {
   txHash: string;
 }
 
-interface IC3Response extends ethers.Log {
-  tokenAmount: string;
-}
-
 type Data = {
-  transactions: Record<string, IC3Response>;
+  transactions: Record<string, string>;
 };
 
 interface WrappedAssetRequest {
@@ -59,13 +55,10 @@ async function runServer() {
   app.get("/", (req, res) => {
     res.send("hey there");
   });
-  app.get("/status", (req, res) => {
-    res.send("hey there");
-  });
 
-  app.get("/get_c3_info", async (req, res) => {
+  app.get("/getRedeemTxn", async (req, res) => {
     const request = { ...req.query } as unknown as InfoRequest;
-    console.log("Request with parameters:", request);
+    console.log("Request getRedeemTxn with parameters:", JSON.stringify(request));
 
     if (
       !request.network ||
@@ -89,60 +82,124 @@ async function runServer() {
         return;
       }
 
-      console.log("about to try getting some txn info");
+      // SOLANA GET REDEEM TXN HASH
+      if (chain === "1") {
+        // get transfers for the address
+        const { result } = await makeSolanaRpcRequest(network, "getSignaturesForAddress", [address]);
 
-      const ethersProvider = getEthersProvider(getChainInfo(network, +chain as ChainId));
-      const blockRanges = await findBlockRangeByTimestamp(ethersProvider!, timestamp);
+        // filter the ones that have more than 20 min difference with transfer timestamp
+        const TIME_DIFFERENCE_TOLERANCE = 2000;
+        const signaturesDetails = result?.filter(
+          a => Math.abs((a.blockTime || 0) - Date.parse(timestamp) / 1000) < TIME_DIFFERENCE_TOLERANCE,
+        );
 
-      if (!blockRanges) {
-        res.send("unable to find block range for timestamp");
-        return null;
+        console.log("amount of txs on time (amount of rpc request we gonna do):", signaturesDetails?.length);
+
+        let redeemTxHash: string | null = null;
+
+        if (signaturesDetails) {
+          // list of tx hashes
+          const signatures = signaturesDetails.map(tx => tx.signature);
+
+          for (const sig of signatures) {
+            await wait(500);
+            const { result: txInfo } = await makeSolanaRpcRequest(network, "getTransaction", [sig, "jsonParsed"]);
+
+            if (!!txInfo?.meta?.innerInstructions?.length) {
+              for (const innerInstruction of txInfo?.meta?.innerInstructions) {
+                if (!!innerInstruction?.instructions?.length) {
+                  for (const instruction of innerInstruction.instructions) {
+                    if (
+                      instruction.parsed?.info?.account?.toLowerCase() === address.toLowerCase() &&
+                      instruction.parsed?.type === "mintTo" &&
+                      Math.abs(instruction.parsed.info.amount - +amount) < 10000 &&
+                      instruction.program === "spl-token"
+                    ) {
+                      if (txInfo.transaction?.signatures && txInfo.transaction?.signatures.length === 1) {
+                        redeemTxHash = txInfo.transaction.signatures[0];
+                        console.log("redeemTxHash found!", redeemTxHash);
+
+                        transactions[txHash] = redeemTxHash!;
+                        await db.write();
+
+                        res.send({ redeemTxHash });
+                        return;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        res.status(404).send("redeem txn not found");
+        return;
       }
 
-      const transferEventSignature = "Transfer(address,address,uint256)";
-      const addressToFilter = ethers.zeroPadValue(ethers.getAddress(address), 32);
+      // EVM GET REDEEM TXN HASH
+      const evmChainInfo = getChainInfo(network, +chain as ChainId);
+      if (!!evmChainInfo) {
+        const ethersProvider = getEthersProvider(evmChainInfo);
+        const blockRanges = await findBlockRangeByTimestamp(ethersProvider!, timestamp);
 
-      let redeemTxn: IC3Response | null = null;
-      let logs: Array<any> = [];
+        if (!blockRanges) {
+          res.send("unable to find block range for timestamp");
+          return null;
+        }
 
-      for (const blockRange of blockRanges) {
-        const filter = {
-          fromBlock: blockRange[0],
-          toBlock: blockRange[1],
-          address: tokenAddress,
-          topics: [ethers.id(transferEventSignature), null, addressToFilter],
-        };
+        const transferEventSignature = "Transfer(address,address,uint256)";
+        const addressToFilter = ethers.zeroPadValue(ethers.getAddress(address), 32);
 
-        if (ethersProvider) {
-          logs = [...logs, ...(await ethersProvider.getLogs(filter))];
+        let redeemTxHash: string | null = null;
+        let logs: Array<ethers.Log> = [];
+
+        for (const blockRange of blockRanges) {
+          const filter = {
+            fromBlock: blockRange[0],
+            toBlock: blockRange[1],
+            address: tokenAddress,
+            topics: [ethers.id(transferEventSignature), null, addressToFilter],
+          };
+
+          if (ethersProvider) {
+            logs = [...logs, ...(await ethersProvider.getLogs(filter))];
+          }
+        }
+
+        for (const log of logs) {
+          const parsedLog = ethers.AbiCoder.defaultAbiCoder().decode(
+            ["uint256"],
+            ethers.zeroPadValue(log.data, 32),
+          );
+
+          const tokenAmount = BigInt(parsedLog?.[0])?.toString();
+          console.log({ tokenAmount });
+
+          if (Math.abs(+tokenAmount - +amount) < 200000) {
+            redeemTxHash = log.transactionHash;
+
+            transactions[txHash] = redeemTxHash!;
+            await db.write();
+          }
+        }
+
+        if (redeemTxHash) {
+          res.send({ redeemTxHash });
+          return;
         }
       }
 
-      for (const log of logs) {
-        const parsedLog = ethers.AbiCoder.defaultAbiCoder().decode(["uint256"], ethers.zeroPadValue(log.data, 32));
-
-        const tokenAmount = BigInt(parsedLog?.[0])?.toString();
-        console.log({ tokenAmount });
-
-        if (Math.abs(+tokenAmount - +amount) < 200000) {
-          redeemTxn = { ...log, tokenAmount };
-
-          transactions[txHash] = redeemTxn!;
-          await db.write();
-        }
-      }
-
-      console.log("returned:", redeemTxn?.transactionHash);
-      res.send(redeemTxn?.transactionHash ? redeemTxn : "");
+      res.status(404).send("redeem txn not found");
     } catch (err) {
       console.error("catch!!", err);
-      res.send("");
+      res.status(404).send(`error getting info: ${err}`);
     }
   });
 
   app.get("/getWrappedAsset", async (req, res) => {
     const request = { ...req.query } as unknown as WrappedAssetRequest;
-    console.log("Request with parameters:", request);
+    console.log("Request getWrappedAsset with parameters:", JSON.stringify(request));
 
     if (!request.tokenChain || !request.tokenAddress || !request.network || !request.targetChain) {
       res.send("Missing parameters, we need to have: tokenChain, tokenAddress, network, targetChain");
@@ -168,13 +225,17 @@ async function runServer() {
       const tokenSymbol = parsedTokens?.[targetChain]?.[wrappedToken.toLowerCase()]?.symbol || "";
 
       if (wrappedToken) {
-        res.send(`FOUND: address ${wrappedToken}${tokenSymbol ? ` with symbol ${tokenSymbol}` : ""}`);
+        console.log(`FOUND: address ${wrappedToken}${tokenSymbol ? ` with symbol ${tokenSymbol}` : ""}`);
+        res.send({
+          wrappedToken,
+          tokenSymbol,
+        });
         return;
       }
 
-      res.send("nice request, but nothing found");
+      res.status(404).send("unable to get wrappedAsset");
     } catch (e) {
-      res.send(`error getWrappedAsset: ${e}`);
+      res.status(404).send(`error getWrappedAsset: ${e}`);
     }
   });
 

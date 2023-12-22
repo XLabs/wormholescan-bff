@@ -1,3 +1,4 @@
+import { Network } from "@wormhole-foundation/connect-sdk";
 import { JsonRpcProvider } from "ethers";
 
 export const findBlockRangeByTimestamp = async (ethersProvider: JsonRpcProvider, targetTimestamp) => {
@@ -40,4 +41,32 @@ export const findBlockRangeByTimestamp = async (ethersProvider: JsonRpcProvider,
 
   // If no matching block is found, return null
   return null;
+};
+
+// Function to make a Solana RPC request
+export async function makeSolanaRpcRequest(network: Network, method: string, params: any[] = []) {
+  const rpcUrl =
+    network.toLowerCase() === "mainnet" ? "https://api.mainnet-beta.solana.com" : "https://api.devnet.solana.com";
+
+  const rpcRequest = {
+    jsonrpc: "2.0",
+    id: 1,
+    method: method,
+    params: params,
+  };
+
+  const response = await fetch(rpcUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(rpcRequest),
+  });
+
+  const result = await response.json();
+  return result;
+}
+
+export const wait = (ms: number) => {
+  return new Promise(resolve => setTimeout(resolve, ms));
 };

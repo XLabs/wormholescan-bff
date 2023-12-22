@@ -13,6 +13,7 @@
   "dependencies": {
     "@wormhole-foundation/connect-sdk": "^0.2.6",
     "@wormhole-foundation/connect-sdk-cosmwasm": "^0.2.6",
+    "@wormhole-foundation/connect-sdk-cosmwasm-core": "^0.2.6",
     "@wormhole-foundation/connect-sdk-cosmwasm-tokenbridge": "^0.2.6",
     "@wormhole-foundation/connect-sdk-evm": "^0.2.6",
     "@wormhole-foundation/connect-sdk-evm-tokenbridge": "^0.2.6",
