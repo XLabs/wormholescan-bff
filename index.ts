@@ -78,7 +78,7 @@ async function runServer() {
 
       if (transactions[txHash]) {
         console.log("returning tx already saved");
-        res.send(transactions[txHash]);
+        res.send({ redeemTxHash: transactions[txHash] });
         return;
       }
 
