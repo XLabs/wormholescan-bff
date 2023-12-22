@@ -4,7 +4,8 @@
   "description": "wormholescan rpc utilities",
   "main": "index.js",
   "scripts": {
-    "start": "tsx index.ts"
+    "start": "tsx index.ts",
+    "updateTokens": "tsx updateTokenlist.ts"
   },
   "author": "valentinoConti",
   "license": "ISC",
@@ -12,8 +13,11 @@
   "dependencies": {
     "@wormhole-foundation/connect-sdk": "^0.2.6",
     "@wormhole-foundation/connect-sdk-cosmwasm": "^0.2.6",
+    "@wormhole-foundation/connect-sdk-cosmwasm-tokenbridge": "^0.2.6",
     "@wormhole-foundation/connect-sdk-evm": "^0.2.6",
+    "@wormhole-foundation/connect-sdk-evm-tokenbridge": "^0.2.6",
     "@wormhole-foundation/connect-sdk-solana": "^0.2.6",
+    "@wormhole-foundation/connect-sdk-solana-tokenbridge": "^0.2.6",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "ethers": "^6.9.1",

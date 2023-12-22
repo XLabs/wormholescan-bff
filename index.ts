@@ -10,7 +10,14 @@ import { JSONPreset } from "lowdb/node";
 
 import { getChainInfo, getEthersProvider } from "./src/environment";
 import { findBlockRangeByTimestamp } from "./src/utils";
-import { Network, ChainId } from "@wormhole-foundation/connect-sdk";
+import { Network, ChainId, Wormhole, chainIdToChain } from "@wormhole-foundation/connect-sdk";
+import { SolanaPlatform } from "@wormhole-foundation/connect-sdk-solana";
+import { EvmPlatform } from "@wormhole-foundation/connect-sdk-evm";
+import { CosmwasmPlatform } from "@wormhole-foundation/connect-sdk-cosmwasm";
+
+import "@wormhole-foundation/connect-sdk-evm-tokenbridge";
+import "@wormhole-foundation/connect-sdk-solana-tokenbridge";
+import "@wormhole-foundation/connect-sdk-cosmwasm-tokenbridge";
 
 dotenv.config();
 
@@ -137,14 +144,35 @@ async function runServer() {
     const request = { ...req.query } as unknown as WrappedAssetRequest;
     console.log("Request with parameters:", request);
 
-    if (!request.network || !request.tokenChain || !request.tokenAddress || !request.targetChain) {
-      res.send("Missing parameters, we need to have: network, tokenChain, tokenAddress, targetChain");
+    if (!request.tokenChain || !request.tokenAddress || !request.network || !request.targetChain) {
+      res.send("Missing parameters, we need to have: tokenChain, tokenAddress, network, targetChain");
       return;
     }
 
     try {
       const { network, tokenChain, tokenAddress, targetChain } = request;
-      res.send("nice request");
+
+      const wh = new Wormhole(network.toLowerCase() === "mainnet" ? "Mainnet" : "Testnet", [
+        EvmPlatform,
+        SolanaPlatform,
+        CosmwasmPlatform,
+      ]);
+
+      const tokenID = Wormhole.chainAddress(chainIdToChain(+tokenChain as ChainId), tokenAddress);
+      const tokenInfo = await wh.getWrappedAsset(chainIdToChain(+targetChain as ChainId), tokenID);
+
+      const tokenList: any = fs.readFileSync("./tokenList.json");
+      const parsedTokens = JSON.parse(tokenList);
+
+      const wrappedToken = tokenInfo.address.toString();
+      const tokenSymbol = parsedTokens?.[targetChain]?.[wrappedToken.toLowerCase()]?.symbol || "";
+
+      if (wrappedToken) {
+        res.send(`FOUND: address ${wrappedToken}${tokenSymbol ? ` with symbol ${tokenSymbol}` : ""}`);
+        return;
+      }
+
+      res.send("nice request, but nothing found");
     } catch (e) {
       res.send(`error getWrappedAsset: ${e}`);
     }
