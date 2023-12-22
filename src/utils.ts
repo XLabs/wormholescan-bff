@@ -1,4 +1,6 @@
-export const findBlockRangeByTimestamp = async (ethersProvider, targetTimestamp) => {
+import { JsonRpcProvider } from "ethers";
+
+export const findBlockRangeByTimestamp = async (ethersProvider: JsonRpcProvider, targetTimestamp) => {
   const lastBlock = await ethersProvider.getBlockNumber();
   let startBlock = 0;
   let endBlock = lastBlock;
@@ -9,7 +11,7 @@ export const findBlockRangeByTimestamp = async (ethersProvider, targetTimestamp)
     const midBlockInfo = await ethersProvider.getBlock(midBlock);
 
     // Check if the timestamp is within a certain threshold of the target timestamp
-    const timestampDiff = Math.abs(midBlockInfo.timestamp - Date.parse(targetTimestamp) / 1000);
+    const timestampDiff = Math.abs(midBlockInfo?.timestamp! - Date.parse(targetTimestamp) / 1000);
 
     console.log({ timestampDiff });
 
@@ -29,7 +31,7 @@ export const findBlockRangeByTimestamp = async (ethersProvider, targetTimestamp)
       return blockRanges;
     }
 
-    if (midBlockInfo.timestamp < Date.parse(targetTimestamp) / 1000) {
+    if (midBlockInfo?.timestamp! < Date.parse(targetTimestamp) / 1000) {
       startBlock = midBlock - 1;
     } else {
       endBlock = midBlock + 1;
