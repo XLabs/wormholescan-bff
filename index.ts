@@ -7,6 +7,8 @@ import { createServer as createHttpServer } from "http";
 import { createServer as createHttpsServer } from "https";
 import { ChainId, Network } from "@certusone/wormhole-sdk";
 import { ethers } from "ethers";
+import { JSONPreset } from "lowdb/node";
+
 import { getChainInfo, getEthersProvider } from "./src/environment";
 import { findBlockRangeByTimestamp } from "./src/utils";
 
@@ -25,6 +27,14 @@ interface InfoRequest {
 interface IC3Response extends ethers.providers.Log {
   tokenAmount: string;
 }
+
+type Data = {
+  transactions: Record<string, IC3Response>;
+};
+
+const initialData: Data = { transactions: {} };
+const db = await JSONPreset<Data>("txns.json", initialData);
+const { transactions } = db.data;
 
 async function runServer() {
   // EXPRESS ENDPOINTS CONNECTIONS
@@ -58,6 +68,14 @@ async function runServer() {
 
     try {
       const { address, chain, network, tokenAddress, timestamp, amount, txHash } = request;
+
+      if (transactions[txHash]) {
+        console.log("returning tx already saved");
+        res.send(transactions[txHash]);
+        return;
+      }
+
+      console.log("about to try getting some txn info");
 
       const ethersProvider = getEthersProvider(getChainInfo(network, +chain as ChainId));
       const blockRanges = await findBlockRangeByTimestamp(ethersProvider, timestamp);
@@ -94,6 +112,9 @@ async function runServer() {
 
         if (Math.abs(+tokenAmount - +amount) < 200000) {
           redeemTxn = { ...log, tokenAmount };
+
+          transactions[txHash] = redeemTxn!;
+          await db.write();
         }
       }
 
