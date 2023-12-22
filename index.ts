@@ -5,10 +5,10 @@ import fs from "fs";
 
 import { createServer as createHttpServer } from "http";
 import { createServer as createHttpsServer } from "https";
-import { getChainInfo, getEthersProvider } from "./environment";
 import { ChainId, Network } from "@certusone/wormhole-sdk";
 import { ethers } from "ethers";
-import { findBlockRangeByTimestamp } from "./utils";
+import { getChainInfo, getEthersProvider } from "./src/environment";
+import { findBlockRangeByTimestamp } from "./src/utils";
 
 dotenv.config();
 
@@ -19,6 +19,7 @@ interface InfoRequest {
   tokenAddress: string;
   timestamp: string;
   amount: string;
+  txHash: string;
 }
 
 interface IC3Response extends ethers.providers.Log {
@@ -48,19 +49,20 @@ async function runServer() {
       !request.address ||
       !request.tokenAddress ||
       !request.timestamp ||
-      !request.amount
+      !request.amount ||
+      !request.txHash
     ) {
       res.send("Missing parameters, we need to have: network, chain, address, tokenAddress, timestamp, amount");
       return;
     }
 
     try {
-      const { address, chain, network, tokenAddress, timestamp, amount } = request;
+      const { address, chain, network, tokenAddress, timestamp, amount, txHash } = request;
 
       const ethersProvider = getEthersProvider(getChainInfo(network, +chain as ChainId));
-      const blockRange = await findBlockRangeByTimestamp(ethersProvider, timestamp);
+      const blockRanges = await findBlockRangeByTimestamp(ethersProvider, timestamp);
 
-      if (!blockRange) {
+      if (!blockRanges) {
         res.send("unable to find block range for timestamp");
         return null;
       }
@@ -69,15 +71,20 @@ async function runServer() {
       const addressToFilter = ethers.utils.hexZeroPad(ethers.utils.getAddress(address), 32);
 
       let redeemTxn: IC3Response | null = null;
+      let logs: Array<any> = [];
 
-      const filter = {
-        fromBlock: blockRange[0],
-        toBlock: blockRange[1],
-        address: tokenAddress,
-        topics: [ethers.utils.id(transferEventSignature), null, addressToFilter],
-      };
+      for (const blockRange of blockRanges) {
+        const filter = {
+          fromBlock: blockRange[0],
+          toBlock: blockRange[1],
+          address: tokenAddress,
+          topics: [ethers.utils.id(transferEventSignature), null, addressToFilter],
+        };
 
-      const logs = await ethersProvider!.getLogs(filter);
+        if (ethersProvider) {
+          logs = [...logs, ...(await ethersProvider.getLogs(filter))];
+        }
+      }
 
       for (const log of logs) {
         const parsedLog = ethers.utils.defaultAbiCoder.decode(["uint256"], ethers.utils.hexZeroPad(log.data, 32));
@@ -91,10 +98,10 @@ async function runServer() {
       }
 
       console.log("returned:", redeemTxn?.transactionHash);
-      res.send(redeemTxn);
+      res.send(redeemTxn?.transactionHash ? redeemTxn : "");
     } catch (err) {
       console.error("catch!!", err);
-      res.send("ERROR");
+      res.send("");
     }
   });
 
