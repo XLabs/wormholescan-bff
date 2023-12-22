@@ -18,15 +18,18 @@ export const findBlockRangeByTimestamp = async (ethersProvider: JsonRpcProvider,
 
     if (timestampDiff <= 1000) {
       console.log({ midBlock });
+
       const blockRanges = [
-        [Math.max(0, midBlock - maxBlockDifference * 9), Math.min(lastBlock, midBlock - maxBlockDifference * 7)],
-        [Math.max(0, midBlock - maxBlockDifference * 7), Math.min(lastBlock, midBlock - maxBlockDifference * 5)],
-        [Math.max(0, midBlock - maxBlockDifference * 5), Math.min(lastBlock, midBlock - maxBlockDifference * 3)],
+        // [Math.max(0, midBlock - maxBlockDifference * 9), Math.min(lastBlock, midBlock - maxBlockDifference * 7)],
+        // [Math.max(0, midBlock - maxBlockDifference * 7), Math.min(lastBlock, midBlock - maxBlockDifference * 5)],
+        // [Math.max(0, midBlock - maxBlockDifference * 5), Math.min(lastBlock, midBlock - maxBlockDifference * 3)],
         [Math.max(0, midBlock - maxBlockDifference * 3), Math.min(lastBlock, midBlock - maxBlockDifference)],
         [Math.max(0, midBlock - maxBlockDifference), Math.min(lastBlock, midBlock + maxBlockDifference)],
         [Math.max(0, midBlock + maxBlockDifference), Math.min(lastBlock, midBlock + maxBlockDifference * 3)],
         [Math.max(0, midBlock + maxBlockDifference * 3), Math.min(lastBlock, midBlock + maxBlockDifference * 5)],
         [Math.max(0, midBlock + maxBlockDifference * 5), Math.min(lastBlock, midBlock + maxBlockDifference * 7)],
+        [Math.max(0, midBlock + maxBlockDifference * 7), Math.min(lastBlock, midBlock + maxBlockDifference * 9)],
+        [Math.max(0, midBlock + maxBlockDifference * 9), Math.min(lastBlock, midBlock + maxBlockDifference * 10)],
       ];
 
       return blockRanges;

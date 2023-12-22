@@ -29,6 +29,7 @@ interface InfoRequest {
   timestamp: string;
   amount: string;
   txHash: string;
+  sequence: string;
 }
 
 type Data = {
@@ -67,14 +68,17 @@ async function runServer() {
       !request.tokenAddress ||
       !request.timestamp ||
       !request.amount ||
-      !request.txHash
+      !request.txHash ||
+      !request.sequence
     ) {
-      res.send("Missing parameters, we need to have: network, chain, address, tokenAddress, timestamp, amount");
+      res.send(
+        "Missing parameters, we need to have: network, chain, address, tokenAddress, timestamp, amount, txHash, sequence",
+      );
       return;
     }
 
     try {
-      const { address, chain, network, tokenAddress, timestamp, amount, txHash } = request;
+      const { address, chain, network, tokenAddress, timestamp, amount, txHash, sequence } = request;
 
       if (transactions[txHash]) {
         console.log("returning tx already saved");
@@ -151,19 +155,37 @@ async function runServer() {
         const transferEventSignature = "Transfer(address,address,uint256)";
         const addressToFilter = ethers.zeroPadValue(ethers.getAddress(address), 32);
 
+        const redeemedEventSignature = "Redeemed(uint16,bytes32,uint64)";
+        const sequenceToFilter = ethers.zeroPadValue("0x" + BigInt(+sequence).toString(16).padStart(64, "0"), 32);
+
         let redeemTxHash: string | null = null;
         let logs: Array<ethers.Log> = [];
 
         for (const blockRange of blockRanges) {
-          const filter = {
+          const filterTransfer = {
             fromBlock: blockRange[0],
             toBlock: blockRange[1],
             address: tokenAddress,
             topics: [ethers.id(transferEventSignature), null, addressToFilter],
           };
 
-          if (ethersProvider) {
-            logs = [...logs, ...(await ethersProvider.getLogs(filter))];
+          logs = [...logs, ...(await ethersProvider!.getLogs(filterTransfer))];
+
+          const filterRedeemed = {
+            fromBlock: blockRange[0],
+            toBlock: blockRange[1],
+            address: address,
+            topics: [ethers.id(redeemedEventSignature), null, null, sequenceToFilter],
+          };
+
+          const found = await ethersProvider!.getLogs(filterRedeemed);
+          if (found.length) {
+            redeemTxHash = found[0].transactionHash;
+            transactions[txHash] = redeemTxHash!;
+            await db.write();
+
+            res.send({ redeemTxHash });
+            return;
           }
         }
 
@@ -174,19 +196,30 @@ async function runServer() {
           );
 
           const tokenAmount = BigInt(parsedLog?.[0])?.toString();
-          console.log({ tokenAmount });
 
-          if (Math.abs(+tokenAmount - +amount) < 200000) {
+          const tokenDecimalsAbi = ["function decimals() view returns (uint8)"];
+          const contract = new ethers.Contract(tokenAddress, tokenDecimalsAbi, ethersProvider);
+          const [tokenDecimals] = await Promise.all([contract.decimals()]);
+
+          console.log({
+            tokenAmountRaw: tokenAmount,
+            tokenAmountParsed: ethers.formatUnits(tokenAmount, tokenDecimals),
+            wormholeAmount: amount,
+            wormholeAmountParsed: ethers.formatUnits(amount, 8),
+          });
+
+          if (
+            Math.abs(+tokenAmount - +amount) < 200000 ||
+            Math.abs(+ethers.formatUnits(tokenAmount, tokenDecimals || 8) - +ethers.formatUnits(amount, 8)) < 1
+          ) {
             redeemTxHash = log.transactionHash;
 
             transactions[txHash] = redeemTxHash!;
             await db.write();
-          }
-        }
 
-        if (redeemTxHash) {
-          res.send({ redeemTxHash });
-          return;
+            res.send({ redeemTxHash });
+            return;
+          }
         }
       }
 
