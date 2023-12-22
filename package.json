@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "tsx index.ts",
-    "updateTokens": "tsx updateTokenlist.ts"
+    "updateTokenList": "tsx updateTokenlist.ts"
   },
   "author": "valentinoConti",
   "license": "ISC",
