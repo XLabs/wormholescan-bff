@@ -49,7 +49,11 @@ export const findBlockRangeByTimestamp = async (ethersProvider: JsonRpcProvider,
 // Function to make a Solana RPC request
 export async function makeSolanaRpcRequest(network: Network, method: string, params: any[] = []) {
   const rpcUrl =
-    network.toLowerCase() === "mainnet" ? "https://api.mainnet-beta.solana.com" : "https://api.devnet.solana.com";
+    network.toLowerCase() === "mainnet"
+      ? process.env.QUICKNODE_URL
+        ? process.env.QUICKNODE_URL
+        : "https://api.mainnet-beta.solana.com"
+      : "https://api.devnet.solana.com";
 
   const rpcRequest = {
     jsonrpc: "2.0",

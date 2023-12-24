@@ -91,32 +91,48 @@ async function runServer() {
         // get transfers for the address
         const { result } = await makeSolanaRpcRequest(network, "getSignaturesForAddress", [address]);
 
-        // filter the ones that have more than 20 min difference with transfer timestamp
-        const TIME_DIFFERENCE_TOLERANCE = 2000;
-        const signaturesDetails = result?.filter(
-          a => Math.abs((a.blockTime || 0) - Date.parse(timestamp) / 1000) < TIME_DIFFERENCE_TOLERANCE,
-        );
-
-        console.log("amount of txs on time (amount of rpc request we gonna do):", signaturesDetails?.length);
+        // filter the ones older than source tx timestamp
+        const signaturesDetails = result?.filter(a => a.blockTime > Date.parse(timestamp) / 1000 - 1000);
 
         let redeemTxHash: string | null = null;
-
         if (signaturesDetails) {
           // list of tx hashes
-          const signatures = signaturesDetails.map(tx => tx.signature);
+          let signatures = signaturesDetails.map(tx => tx.signature);
+          console.log("amount of txs on time", signatures?.length);
+
+          // prevent more than 100 requests, last 50 txns and the 50 closer to the timestamp
+          if (signatures.length > 100) {
+            signatures = [
+              ...signatures.slice(0, 50),
+              ...signatures.slice(signatures.length - 51, signatures.length - 1),
+            ];
+          }
 
           for (const sig of signatures) {
-            await wait(500);
-            const { result: txInfo } = await makeSolanaRpcRequest(network, "getTransaction", [sig, "jsonParsed"]);
+            const { result: txInfo } = await makeSolanaRpcRequest(network, "getTransaction", [
+              sig,
+              { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 },
+            ]);
+
+            console.log(`sig: ${sig}, blockTime: ${txInfo?.blockTime}`);
 
             if (!!txInfo?.meta?.innerInstructions?.length) {
               for (const innerInstruction of txInfo?.meta?.innerInstructions) {
                 if (!!innerInstruction?.instructions?.length) {
                   for (const instruction of innerInstruction.instructions) {
+                    // console.log({
+                    //   type: instruction.parsed?.type,
+                    //   mint: instruction.parsed?.info?.mint?.toLowerCase(),
+                    //   tokenAddress,
+                    //   amount: amount,
+                    //   instAmount: +instruction.parsed?.info?.amount,
+                    //   program: instruction.program,
+                    // });
+
                     if (
-                      instruction.parsed?.info?.account?.toLowerCase() === address.toLowerCase() &&
                       instruction.parsed?.type === "mintTo" &&
-                      Math.abs(instruction.parsed.info.amount - +amount) < 10000 &&
+                      instruction.parsed?.info?.mint?.toLowerCase() === tokenAddress.toLowerCase() &&
+                      Math.abs(+instruction.parsed?.info?.amount - +amount) < 10000 &&
                       instruction.program === "spl-token"
                     ) {
                       if (txInfo.transaction?.signatures && txInfo.transaction?.signatures.length === 1) {
