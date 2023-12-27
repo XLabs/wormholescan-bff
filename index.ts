@@ -294,8 +294,9 @@ async function runServer() {
 
       const savedAsset = await Asset.findOne({
         network,
-        address: tokenAddress,
-        targetChain: targetChain,
+        tokenChain,
+        tokenAddress,
+        targetChain,
       });
 
       if (savedAsset) {
@@ -323,7 +324,8 @@ async function runServer() {
 
         const newAsset = new Asset({
           network,
-          address: tokenAddress,
+          tokenChain,
+          tokenAddress,
           targetChain,
           data: {
             wrappedToken,
