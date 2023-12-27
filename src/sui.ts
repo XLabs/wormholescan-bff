@@ -1,5 +1,6 @@
 import { SuiClient, SuiObjectResponse } from "@mysten/sui.js/client";
 import { isValidSuiAddress as isValidFullSuiAddress, normalizeSuiAddress } from "@mysten/sui.js/utils";
+import { ensureHexPrefix } from "./utils";
 
 const isValidSuiType = (type: string): boolean => {
   const tokens = type.split("::");
@@ -8,17 +9,6 @@ const isValidSuiType = (type: string): boolean => {
   }
 
   return isValidSuiAddress(tokens[0]) && !!tokens[1] && !!tokens[2];
-};
-
-export const uint8ArrayToHex = (a: Uint8Array): string => Buffer.from(a).toString("hex");
-
-export const hexToUint8Array = (h: string): Uint8Array => {
-  if (h.startsWith("0x")) h = h.slice(2);
-  return new Uint8Array(Buffer.from(h, "hex"));
-};
-
-const ensureHexPrefix = (x: string): string => {
-  return x.substring(0, 2) !== "0x" ? `0x${x}` : x;
 };
 
 const trimSuiType = (type: string): string => type.replace(/(0x)(0*)/g, "0x");

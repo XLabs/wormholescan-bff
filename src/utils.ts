@@ -73,3 +73,15 @@ export async function makeSolanaRpcRequest(network: Network, method: string, par
   const result = await response.json();
   return result;
 }
+
+// General Utils
+export const uint8ArrayToHex = (a: Uint8Array): string => Buffer.from(a).toString("hex");
+
+export const hexToUint8Array = (h: string): Uint8Array => {
+  if (h.startsWith("0x")) h = h.slice(2);
+  return new Uint8Array(Buffer.from(h, "hex"));
+};
+
+export const ensureHexPrefix = (x: string): string => {
+  return x.substring(0, 2) !== "0x" ? `0x${x}` : x;
+};

@@ -9,7 +9,7 @@ import { createServer as createHttpsServer } from "https";
 import { ethers } from "ethers";
 
 import { getChainInfo, getEthersProvider } from "./src/environment";
-import { findBlockRangeByTimestamp, makeSolanaRpcRequest } from "./src/utils";
+import { findBlockRangeByTimestamp, hexToUint8Array, makeSolanaRpcRequest } from "./src/utils";
 import { Asset, Transaction } from "./src/mongodb";
 
 import { Network, ChainId, Wormhole, chainIdToChain, toNative } from "@wormhole-foundation/connect-sdk";
@@ -19,9 +19,11 @@ import { CosmwasmPlatform } from "@wormhole-foundation/connect-sdk-cosmwasm";
 import "@wormhole-foundation/connect-sdk-evm-tokenbridge";
 import "@wormhole-foundation/connect-sdk-solana-tokenbridge";
 import "@wormhole-foundation/connect-sdk-cosmwasm-tokenbridge";
-
 import { SuiClient, getFullnodeUrl } from "@mysten/sui.js/client";
-import { getForeignAssetSui, hexToUint8Array } from "./src/sui";
+import algosdk from "algosdk";
+
+import { getForeignAssetSui } from "./src/sui";
+import { getForeignAssetAlgorand } from "./src/algorand";
 
 dotenv.config();
 
@@ -354,6 +356,31 @@ async function runServer() {
 
         if (foreignAsset) {
           await returnAsset(foreignAsset);
+          return;
+        }
+      }
+
+      // ALGORAND target
+      if (targetChain === "8") {
+        const tokenBridgeContract = wh.getContracts("Algorand")?.tokenBridge;
+
+        const algoUrl =
+          network.toLowerCase() === "mainnet"
+            ? "https://mainnet-api.algonode.cloud"
+            : "https://testnet-api.algonode.cloud";
+
+        const algodClient = new algosdk.Algodv2("", algoUrl, "");
+        const nativeTokenAddress = toNative(chainIdToChain(+tokenChain as ChainId), tokenAddress);
+
+        const foreignAsset = await getForeignAssetAlgorand(
+          algodClient as any,
+          BigInt(tokenBridgeContract!),
+          +tokenChain,
+          nativeTokenAddress.toUniversalAddress().toString().replace("0x", ""),
+        );
+
+        if (foreignAsset) {
+          await returnAsset(foreignAsset.toString());
           return;
         }
       }
