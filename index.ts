@@ -323,10 +323,10 @@ async function runServer() {
         const tokenSymbol = parsedTokens?.[targetChain]?.[wrappedToken.toLowerCase()]?.symbol || "";
 
         const newAsset = new Asset({
-          network: network,
-          tokenChain: tokenChain,
-          tokenAddress: tokenAddress,
-          targetChain: targetChain,
+          network,
+          tokenChain,
+          tokenAddress,
+          targetChain,
           data: {
             wrappedToken,
             tokenSymbol,

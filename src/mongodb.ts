@@ -2,7 +2,8 @@ import mongoose from "mongoose";
 
 const assetSchema = new mongoose.Schema({
   network: String,
-  address: String,
+  tokenAddress: String,
+  tokenChain: String,
   targetChain: String,
   data: mongoose.Schema.Types.Mixed,
 });
