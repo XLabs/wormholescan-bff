@@ -212,6 +212,10 @@
       "logo": "https://raw.githubusercontent.com/wormhole-foundation/wormhole-token-list/main/assets/USDCeav_wh.png",
       "symbol": "USDCeav"
     },
+    "agyuufvygnuuxwg6gukga4b3mgmbuez9hgqy73n76xpj": {
+      "logo": "https://raw.githubusercontent.com/wormhole-foundation/wormhole-token-list/main/assets/HOOD_wh.png",
+      "symbol": "HOOD"
+    },
     "ask8bss7poxffvjfxnsjepj9kuptx15qarnhdjs6ddye": {
       "logo": "https://raw.githubusercontent.com/wormhole-foundation/wormhole-token-list/main/assets/RGT_wh.png",
       "symbol": "RGT"
@@ -497,6 +501,10 @@
     "0x0316eb71485b0ab14103307bf65a021042c6d380": {
       "logo": "https://raw.githubusercontent.com/wormhole-foundation/wormhole-token-list/main/assets/HBTC_wh.png",
       "symbol": "HBTC"
+    },
+    "0x04815313e9329e8905a77251a1781cfa7934259a": {
+      "logo": "https://raw.githubusercontent.com/wormhole-foundation/wormhole-token-list/main/assets/HOOD_wh.png",
+      "symbol": "HOOD"
     },
     "0x06af07097c9eeb7fd685c692751d5c66db49c215": {
       "logo": "https://raw.githubusercontent.com/wormhole-foundation/wormhole-token-list/main/assets/CHAI_wh.png",

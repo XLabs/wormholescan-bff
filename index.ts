@@ -10,15 +10,18 @@ import { ethers } from "ethers";
 
 import { getChainInfo, getEthersProvider } from "./src/environment";
 import { findBlockRangeByTimestamp, makeSolanaRpcRequest } from "./src/utils";
-import { Network, ChainId, Wormhole, chainIdToChain } from "@wormhole-foundation/connect-sdk";
+import { Asset, Transaction } from "./src/mongodb";
+
+import { Network, ChainId, Wormhole, chainIdToChain, toNative } from "@wormhole-foundation/connect-sdk";
 import { SolanaPlatform } from "@wormhole-foundation/connect-sdk-solana";
 import { EvmPlatform } from "@wormhole-foundation/connect-sdk-evm";
 import { CosmwasmPlatform } from "@wormhole-foundation/connect-sdk-cosmwasm";
-
 import "@wormhole-foundation/connect-sdk-evm-tokenbridge";
 import "@wormhole-foundation/connect-sdk-solana-tokenbridge";
 import "@wormhole-foundation/connect-sdk-cosmwasm-tokenbridge";
-import { Asset, Transaction } from "./src/mongodb";
+
+import { SuiClient, getFullnodeUrl } from "@mysten/sui.js/client";
+import { getForeignAssetSui, hexToUint8Array } from "./src/sui";
 
 dotenv.config();
 
@@ -310,16 +313,12 @@ async function runServer() {
         CosmwasmPlatform,
       ]);
 
-      const tokenID = Wormhole.chainAddress(chainIdToChain(+tokenChain as ChainId), tokenAddress);
-      const tokenInfo = await wh.getWrappedAsset(chainIdToChain(+targetChain as ChainId), tokenID);
-
       const tokenList: any = fs.readFileSync("./tokenList.json");
       const parsedTokens = JSON.parse(tokenList);
 
-      const wrappedToken = tokenInfo.address.toString();
-      const tokenSymbol = parsedTokens?.[targetChain]?.[wrappedToken.toLowerCase()]?.symbol || "";
+      const returnAsset = async (wrappedToken: string) => {
+        const tokenSymbol = parsedTokens?.[targetChain]?.[wrappedToken.toLowerCase()]?.symbol || "";
 
-      if (wrappedToken) {
         const newAsset = new Asset({
           network,
           address: tokenAddress,
@@ -336,6 +335,37 @@ async function runServer() {
           wrappedToken,
           tokenSymbol,
         });
+      };
+
+      // SUI target
+      if (targetChain === "21") {
+        const which = network.toLowerCase() === "mainnet" ? "mainnet" : "testnet";
+        const suiClient = new SuiClient({ url: getFullnodeUrl(which) });
+        const tokenBridgeContract = wh.getContracts("Sui")?.tokenBridge;
+
+        const nativeTokenAddress = toNative(chainIdToChain(+tokenChain as ChainId), tokenAddress);
+
+        const foreignAsset = await getForeignAssetSui(
+          suiClient,
+          tokenBridgeContract!,
+          +tokenChain,
+          hexToUint8Array(nativeTokenAddress.toUniversalAddress().toString()),
+        );
+
+        if (foreignAsset) {
+          await returnAsset(foreignAsset);
+          return;
+        }
+      }
+
+      // EVM, SOLANA, COSMWASM target
+      const tokenID = Wormhole.chainAddress(chainIdToChain(+tokenChain as ChainId), tokenAddress);
+      const tokenInfo = await wh.getWrappedAsset(chainIdToChain(+targetChain as ChainId), tokenID);
+
+      const foreignAsset = tokenInfo.address.toString();
+
+      if (foreignAsset) {
+        await returnAsset(foreignAsset);
         return;
       }
 
