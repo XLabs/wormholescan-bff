@@ -2,14 +2,14 @@ import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import fs from "fs";
+import mongoose from "mongoose";
 
 import { createServer as createHttpServer } from "http";
 import { createServer as createHttpsServer } from "https";
 import { ethers } from "ethers";
-import { JSONPreset } from "lowdb/node";
 
 import { getChainInfo, getEthersProvider } from "./src/environment";
-import { findBlockRangeByTimestamp, makeSolanaRpcRequest, wait } from "./src/utils";
+import { findBlockRangeByTimestamp, makeSolanaRpcRequest } from "./src/utils";
 import { Network, ChainId, Wormhole, chainIdToChain } from "@wormhole-foundation/connect-sdk";
 import { SolanaPlatform } from "@wormhole-foundation/connect-sdk-solana";
 import { EvmPlatform } from "@wormhole-foundation/connect-sdk-evm";
@@ -18,6 +18,7 @@ import { CosmwasmPlatform } from "@wormhole-foundation/connect-sdk-cosmwasm";
 import "@wormhole-foundation/connect-sdk-evm-tokenbridge";
 import "@wormhole-foundation/connect-sdk-solana-tokenbridge";
 import "@wormhole-foundation/connect-sdk-cosmwasm-tokenbridge";
+import { Asset, Transaction } from "./src/mongodb";
 
 dotenv.config();
 
@@ -32,10 +33,6 @@ interface InfoRequest {
   sequence: string;
 }
 
-type Data = {
-  transactions: Record<string, string>;
-};
-
 interface WrappedAssetRequest {
   network: Network;
   tokenChain: string;
@@ -43,9 +40,18 @@ interface WrappedAssetRequest {
   targetChain: string;
 }
 
-const initialData: Data = { transactions: {} };
-const db = await JSONPreset<Data>("txns.json", initialData);
-const { transactions } = db.data;
+const connectToDatabase = async () => {
+  try {
+    await mongoose.connect(
+      `mongodb+srv://${process.env.MONGO_CREDENTIALS}/wrappedAssets?retryWrites=true&w=majority`,
+    );
+    console.log("Connected to MongoDB correctly");
+    return true;
+  } catch (err) {
+    console.error("Error connecting to MongoDB", err);
+    return false;
+  }
+};
 
 async function runServer() {
   // EXPRESS ENDPOINTS CONNECTIONS
@@ -80,9 +86,11 @@ async function runServer() {
     try {
       const { address, chain, network, tokenAddress, timestamp, amount, txHash, sequence } = request;
 
-      if (transactions[txHash]) {
-        console.log("returning tx already saved");
-        res.send({ redeemTxHash: transactions[txHash] });
+      const savedTransaction = await Transaction.findOne({ txHash });
+
+      if (savedTransaction) {
+        console.log("found existing redeem txn", savedTransaction.data);
+        res.send(savedTransaction.data);
         return;
       }
 
@@ -137,10 +145,16 @@ async function runServer() {
                     ) {
                       if (txInfo.transaction?.signatures && txInfo.transaction?.signatures.length === 1) {
                         redeemTxHash = txInfo.transaction.signatures[0];
-                        console.log("redeemTxHash found!", redeemTxHash);
 
-                        transactions[txHash] = redeemTxHash!;
-                        await db.write();
+                        const newTransaction = new Transaction({
+                          txHash,
+                          data: {
+                            redeemTxHash: redeemTxHash,
+                          },
+                        });
+                        await newTransaction.save();
+
+                        console.log("new solana redeemTxHash found!", redeemTxHash);
 
                         res.send({ redeemTxHash });
                         return;
@@ -178,15 +192,6 @@ async function runServer() {
         let logs: Array<ethers.Log> = [];
 
         for (const blockRange of blockRanges) {
-          const filterTransfer = {
-            fromBlock: blockRange[0],
-            toBlock: blockRange[1],
-            address: tokenAddress,
-            topics: [ethers.id(transferEventSignature), null, addressToFilter],
-          };
-
-          logs = [...logs, ...(await ethersProvider!.getLogs(filterTransfer))];
-
           const filterRedeemed = {
             fromBlock: blockRange[0],
             toBlock: blockRange[1],
@@ -197,12 +202,29 @@ async function runServer() {
           const found = await ethersProvider!.getLogs(filterRedeemed);
           if (found.length) {
             redeemTxHash = found[0].transactionHash;
-            transactions[txHash] = redeemTxHash!;
-            await db.write();
+
+            const newTransaction = new Transaction({
+              txHash,
+              data: {
+                redeemTxHash: redeemTxHash,
+              },
+            });
+            await newTransaction.save();
+
+            console.log("new evm redeemTxHash found!", redeemTxHash);
 
             res.send({ redeemTxHash });
             return;
           }
+
+          const filterTransfer = {
+            fromBlock: blockRange[0],
+            toBlock: blockRange[1],
+            address: tokenAddress,
+            topics: [ethers.id(transferEventSignature), null, addressToFilter],
+          };
+
+          logs = [...logs, ...(await ethersProvider!.getLogs(filterTransfer))];
         }
 
         for (const log of logs) {
@@ -230,8 +252,15 @@ async function runServer() {
           ) {
             redeemTxHash = log.transactionHash;
 
-            transactions[txHash] = redeemTxHash!;
-            await db.write();
+            const newTransaction = new Transaction({
+              txHash,
+              data: {
+                redeemTxHash: redeemTxHash,
+              },
+            });
+            await newTransaction.save();
+
+            console.log("new evm redeemTxHash found!", redeemTxHash);
 
             res.send({ redeemTxHash });
             return;
@@ -258,6 +287,23 @@ async function runServer() {
     try {
       const { network, tokenChain, tokenAddress, targetChain } = request;
 
+      const savedAsset = await Asset.findOne({
+        network,
+        address: tokenAddress,
+        targetChain: targetChain,
+      });
+
+      if (savedAsset) {
+        console.log(
+          `FOUND EXISTING: address ${savedAsset.data.wrappedToken}${
+            savedAsset.data.tokenSymbol ? ` with symbol ${savedAsset.data.tokenSymbol}` : ""
+          }`,
+        );
+
+        res.send(savedAsset.data);
+        return;
+      }
+
       const wh = new Wormhole(network.toLowerCase() === "mainnet" ? "Mainnet" : "Testnet", [
         EvmPlatform,
         SolanaPlatform,
@@ -274,7 +320,18 @@ async function runServer() {
       const tokenSymbol = parsedTokens?.[targetChain]?.[wrappedToken.toLowerCase()]?.symbol || "";
 
       if (wrappedToken) {
-        console.log(`FOUND: address ${wrappedToken}${tokenSymbol ? ` with symbol ${tokenSymbol}` : ""}`);
+        const newAsset = new Asset({
+          network,
+          address: tokenAddress,
+          targetChain,
+          data: {
+            wrappedToken,
+            tokenSymbol,
+          },
+        });
+        await newAsset.save();
+
+        console.log(`FOUND NEW: address ${wrappedToken}${tokenSymbol ? ` with symbol ${tokenSymbol}` : ""}`);
         res.send({
           wrappedToken,
           tokenSymbol,
@@ -284,6 +341,7 @@ async function runServer() {
 
       res.status(404).send("unable to get wrappedAsset");
     } catch (e) {
+      console.error("error on getWrappedAsset", e);
       res.status(404).send(`error getWrappedAsset: ${e}`);
     }
   });
@@ -306,4 +364,9 @@ async function runServer() {
   });
 }
 
-runServer();
+const isConnected = await connectToDatabase();
+if (isConnected) {
+  runServer();
+} else {
+  console.log("server wont turn on, no mongodb connection");
+}

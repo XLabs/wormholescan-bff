@@ -73,7 +73,3 @@ export async function makeSolanaRpcRequest(network: Network, method: string, par
   const result = await response.json();
   return result;
 }
-
-export const wait = (ms: number) => {
-  return new Promise(resolve => setTimeout(resolve, ms));
-};
