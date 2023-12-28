@@ -28,14 +28,15 @@ import { getForeignAssetAlgorand } from "./src/algorand";
 dotenv.config();
 
 interface InfoRequest {
-  network: Network;
-  chain: string;
   address: string;
-  tokenAddress: string;
-  timestamp: string;
   amount: string;
-  txHash: string;
+  fromChain: string;
+  network: Network;
   sequence: string;
+  timestamp: string;
+  toChain: string;
+  tokenAddress: string;
+  txHash: string;
 }
 
 interface WrappedAssetRequest {
@@ -73,23 +74,24 @@ async function runServer() {
     console.log("Request getRedeemTxn with parameters:", JSON.stringify(request));
 
     if (
-      !request.network ||
-      !request.chain ||
       !request.address ||
-      !request.tokenAddress ||
-      !request.timestamp ||
       !request.amount ||
-      !request.txHash ||
-      !request.sequence
+      !request.fromChain ||
+      !request.network ||
+      !request.sequence ||
+      !request.timestamp ||
+      !request.toChain ||
+      !request.tokenAddress ||
+      !request.txHash
     ) {
       res.send(
-        "Missing parameters, we need to have: network, chain, address, tokenAddress, timestamp, amount, txHash, sequence",
+        "Missing parameters, we need to have: address, amount, fromChain, network, sequence, timestamp, toChain, tokenAddress, txHash",
       );
       return;
     }
 
     try {
-      const { address, chain, network, tokenAddress, timestamp, amount, txHash, sequence } = request;
+      const { address, fromChain, toChain, network, tokenAddress, timestamp, amount, txHash, sequence } = request;
 
       const savedTransaction = await Transaction.findOne({ txHash });
 
@@ -99,8 +101,86 @@ async function runServer() {
         return;
       }
 
+      const returnTransaction = async (redeemTxHash: string) => {
+        const newTransaction = new Transaction({
+          txHash,
+          data: {
+            redeemTxHash: redeemTxHash,
+          },
+        });
+        await newTransaction.save();
+
+        console.log(`new ${chainIdToChain(+toChain as ChainId)} redeemTxHash found!`, redeemTxHash);
+
+        res.send({ redeemTxHash });
+      };
+
+      // SUI GET REDEEM TXN HASH
+      if (toChain === "21") {
+        const which = network.toLowerCase() === "mainnet" ? "mainnet" : "testnet";
+        const suiClient = new SuiClient({ url: getFullnodeUrl(which) });
+
+        let cursor: string | null | undefined = null;
+        let hasMore = true;
+        let ii = 0;
+        const limit = 4;
+        let redeemTxHash = "";
+
+        while (hasMore && ii < limit) {
+          try {
+            const addressTxns = await suiClient.queryTransactionBlocks({
+              options: {
+                showRawInput: true,
+                showEvents: true,
+              },
+              filter: {
+                ToAddress: address,
+              },
+              cursor,
+            });
+
+            ii = ii + 1;
+            hasMore = addressTxns.hasNextPage;
+            cursor = addressTxns.nextCursor;
+
+            // console.log(JSON.stringify(addressTxns));
+
+            if (addressTxns.data) {
+              for (const txnBlock of addressTxns.data) {
+                if (txnBlock.events) {
+                  for (const event of txnBlock.events!) {
+                    const parsedJson: any = event.parsedJson;
+                    if (
+                      parsedJson &&
+                      `${parsedJson?.emitter_chain}` === fromChain &&
+                      parsedJson?.sequence === sequence
+                    ) {
+                      redeemTxHash = txnBlock.digest;
+                    }
+                  }
+                }
+              }
+            }
+            if (redeemTxHash) {
+              break;
+            }
+          } catch (e) {
+            console.error("unable to get redeem txn for sui txn");
+            break;
+          }
+        }
+
+        if (redeemTxHash) {
+          await returnTransaction(redeemTxHash);
+          return;
+        }
+
+        res.status(404).send("redeem txn not found");
+        return;
+      }
+
       // SOLANA GET REDEEM TXN HASH
-      if (chain === "1") {
+      if (toChain === "1") {
         // get transfers for the address
         const { result } = await makeSolanaRpcRequest(network, "getSignaturesForAddress", [address]);
 
@@ -133,15 +213,6 @@ async function runServer() {
               for (const innerInstruction of txInfo?.meta?.innerInstructions) {
                 if (!!innerInstruction?.instructions?.length) {
                   for (const instruction of innerInstruction.instructions) {
-                    // console.log({
-                    //   type: instruction.parsed?.type,
-                    //   mint: instruction.parsed?.info?.mint?.toLowerCase(),
-                    //   tokenAddress,
-                    //   amount: amount,
-                    //   instAmount: +instruction.parsed?.info?.amount,
-                    //   program: instruction.program,
-                    // });
-
                     if (
                       instruction.parsed?.type === "mintTo" &&
                       instruction.parsed?.info?.mint?.toLowerCase() === tokenAddress.toLowerCase() &&
@@ -151,17 +222,7 @@ async function runServer() {
                       if (txInfo.transaction?.signatures && txInfo.transaction?.signatures.length === 1) {
                         redeemTxHash = txInfo.transaction.signatures[0];
 
-                        const newTransaction = new Transaction({
-                          txHash,
-                          data: {
-                            redeemTxHash: redeemTxHash,
-                          },
-                        });
-                        await newTransaction.save();
-
-                        console.log("new solana redeemTxHash found!", redeemTxHash);
-
-                        res.send({ redeemTxHash });
+                        await returnTransaction(redeemTxHash!);
                         return;
                       }
                     }
@@ -177,7 +238,7 @@ async function runServer() {
       }
 
       // EVM GET REDEEM TXN HASH
-      const evmChainInfo = getChainInfo(network, +chain as ChainId);
+      const evmChainInfo = getChainInfo(network, +toChain as ChainId);
       if (!!evmChainInfo) {
         const ethersProvider = getEthersProvider(evmChainInfo);
         const blockRanges = await findBlockRangeByTimestamp(ethersProvider!, timestamp);
@@ -208,17 +269,7 @@ async function runServer() {
           if (found.length) {
             redeemTxHash = found[0].transactionHash;
 
-            const newTransaction = new Transaction({
-              txHash,
-              data: {
-                redeemTxHash: redeemTxHash,
-              },
-            });
-            await newTransaction.save();
-
-            console.log("new evm redeemTxHash found!", redeemTxHash);
-
-            res.send({ redeemTxHash });
+            await returnTransaction(redeemTxHash);
             return;
           }
 
@@ -244,30 +295,13 @@ async function runServer() {
           const contract = new ethers.Contract(tokenAddress, tokenDecimalsAbi, ethersProvider);
           const [tokenDecimals] = await Promise.all([contract.decimals()]);
 
-          console.log({
-            tokenAmountRaw: tokenAmount,
-            tokenAmountParsed: ethers.formatUnits(tokenAmount, tokenDecimals),
-            wormholeAmount: amount,
-            wormholeAmountParsed: ethers.formatUnits(amount, 8),
-          });
-
           if (
             Math.abs(+tokenAmount - +amount) < 200000 ||
             Math.abs(+ethers.formatUnits(tokenAmount, tokenDecimals || 8) - +ethers.formatUnits(amount, 8)) < 1
           ) {
             redeemTxHash = log.transactionHash;
 
-            const newTransaction = new Transaction({
-              txHash,
-              data: {
-                redeemTxHash: redeemTxHash,
-              },
-            });
-            await newTransaction.save();
-
-            console.log("new evm redeemTxHash found!", redeemTxHash);
-
-            res.send({ redeemTxHash });
+            await returnTransaction(redeemTxHash);
             return;
           }
         }
