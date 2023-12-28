@@ -75,6 +75,12 @@ export async function makeSolanaRpcRequest(network: Network, method: string, par
 }
 
 // General Utils
+export const compareNumbersTrailingZeros = (num1: number, num2: number) => {
+  while (num1 % 10 === 0) num1 /= 10;
+  while (num2 % 10 === 0) num2 /= 10;
+  return num1 === num2;
+};
+
 export const uint8ArrayToHex = (a: Uint8Array): string => Buffer.from(a).toString("hex");
 
 export const hexToUint8Array = (h: string): Uint8Array => {

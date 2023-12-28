@@ -9,7 +9,12 @@ import { createServer as createHttpsServer } from "https";
 import { ethers } from "ethers";
 
 import { getChainInfo, getEthersProvider } from "./src/environment";
-import { findBlockRangeByTimestamp, hexToUint8Array, makeSolanaRpcRequest } from "./src/utils";
+import {
+  compareNumbersTrailingZeros,
+  findBlockRangeByTimestamp,
+  hexToUint8Array,
+  makeSolanaRpcRequest,
+} from "./src/utils";
 import { Asset, Transaction } from "./src/mongodb";
 
 import { Network, ChainId, Wormhole, chainIdToChain, toNative } from "@wormhole-foundation/connect-sdk";
@@ -212,18 +217,41 @@ async function runServer() {
             if (!!txInfo?.meta?.innerInstructions?.length) {
               for (const innerInstruction of txInfo?.meta?.innerInstructions) {
                 if (!!innerInstruction?.instructions?.length) {
-                  for (const instruction of innerInstruction.instructions) {
-                    if (
-                      instruction.parsed?.type === "mintTo" &&
-                      instruction.parsed?.info?.mint?.toLowerCase() === tokenAddress.toLowerCase() &&
-                      Math.abs(+instruction.parsed?.info?.amount - +amount) < 10000 &&
-                      instruction.program === "spl-token"
-                    ) {
-                      if (txInfo.transaction?.signatures && txInfo.transaction?.signatures.length === 1) {
-                        redeemTxHash = txInfo.transaction.signatures[0];
+                  // SOL (native token) transfer
+                  if (
+                    innerInstruction.instructions.some(
+                      instruction =>
+                        compareNumbersTrailingZeros(+instruction.parsed?.info?.amount, +amount) &&
+                        instruction.parsed?.type === "transfer",
+                    ) &&
+                    innerInstruction.instructions.some(
+                      instruction =>
+                        instruction.parsed?.info?.destination?.toLowerCase() === address.toLowerCase() &&
+                        instruction.parsed?.type === "transfer",
+                    )
+                  ) {
+                    if (txInfo.transaction?.signatures && txInfo.transaction?.signatures.length === 1) {
+                      redeemTxHash = txInfo.transaction.signatures[0];
 
-                        await returnTransaction(redeemTxHash!);
-                        return;
+                      await returnTransaction(redeemTxHash!);
+                      return;
+                    }
+                  }
+                  // SPL token transfer
+                  else {
+                    for (const instruction of innerInstruction.instructions) {
+                      if (
+                        instruction.parsed?.type === "mintTo" &&
+                        instruction.parsed?.info?.mint?.toLowerCase() === tokenAddress.toLowerCase() &&
+                        Math.abs(+instruction.parsed?.info?.amount - +amount) < 10000 &&
+                        instruction.program === "spl-token"
+                      ) {
+                        if (txInfo.transaction?.signatures && txInfo.transaction?.signatures.length === 1) {
+                          redeemTxHash = txInfo.transaction.signatures[0];
+
+                          await returnTransaction(redeemTxHash!);
+                          return;
+                        }
                       }
                     }
                   }
