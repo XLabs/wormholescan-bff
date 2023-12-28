@@ -26,7 +26,8 @@ return example:
 
 Tries to get the redeem transaction hash for transactions that don't include it. Requires the following query parameters:
   - **network**: "MAINNET" | "TESTNET"
-  - **chain**: wormhole chain id of the target chain
+  - **fromChain**: wormhole chain id of the source chain
+  - **toChain**: wormhole chain id of the target chain
   - **address**: target wallet address, the one that should have received the transaction
   - **tokenAddress**: the token address that was sent to this wallet
   - **timestamp**: the date string for this transaction that we want to get
