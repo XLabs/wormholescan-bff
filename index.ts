@@ -106,18 +106,19 @@ async function runServer() {
         return;
       }
 
-      const returnTransaction = async (redeemTxHash: string) => {
+      const returnTransaction = async (redeemTxHash: string, timestampMs?: number) => {
         const newTransaction = new Transaction({
           txHash,
           data: {
             redeemTxHash: redeemTxHash,
+            timestamp: timestampMs,
           },
         });
         await newTransaction.save();
 
-        console.log(`new ${chainIdToChain(+toChain as ChainId)} redeemTxHash found!`, redeemTxHash);
+        console.log(`new ${chainIdToChain(+toChain as ChainId)} redeemTxHash found! ${redeemTxHash}`);
 
-        res.send({ redeemTxHash });
+        res.send({ redeemTxHash, timestamp: timestampMs });
       };
 
       // SUI GET REDEEM TXN HASH
@@ -130,6 +131,7 @@ async function runServer() {
         let ii = 0;
         const limit = 4;
         let redeemTxHash = "";
+        let timestampMs = 0;
 
         while (hasMore && ii < limit) {
           try {
@@ -148,7 +150,7 @@ async function runServer() {
             hasMore = addressTxns.hasNextPage;
             cursor = addressTxns.nextCursor;
 
-            // console.log(JSON.stringify(addressTxns));
+            console.log(JSON.stringify(addressTxns));
 
             if (addressTxns.data) {
               for (const txnBlock of addressTxns.data) {
@@ -161,6 +163,7 @@ async function runServer() {
                       parsedJson?.sequence === sequence
                     ) {
                       redeemTxHash = txnBlock.digest;
+                      timestampMs = +txnBlock.timestampMs!;
                     }
                   }
                 }
@@ -176,7 +179,7 @@ async function runServer() {
         }
 
         if (redeemTxHash) {
-          await returnTransaction(redeemTxHash);
+          await returnTransaction(redeemTxHash, timestampMs || undefined);
           return;
         }
 
@@ -233,7 +236,7 @@ async function runServer() {
                     if (txInfo.transaction?.signatures && txInfo.transaction?.signatures.length === 1) {
                       redeemTxHash = txInfo.transaction.signatures[0];
 
-                      await returnTransaction(redeemTxHash!);
+                      await returnTransaction(redeemTxHash!, +txInfo?.blockTime * 1000 || undefined);
                       return;
                     }
                   }
@@ -249,7 +252,7 @@ async function runServer() {
                         if (txInfo.transaction?.signatures && txInfo.transaction?.signatures.length === 1) {
                           redeemTxHash = txInfo.transaction.signatures[0];
 
-                          await returnTransaction(redeemTxHash!);
+                          await returnTransaction(redeemTxHash!, +txInfo?.blockTime * 1000 || undefined);
                           return;
                         }
                       }
@@ -295,9 +298,13 @@ async function runServer() {
 
           const found = await ethersProvider!.getLogs(filterRedeemed);
           if (found.length) {
-            redeemTxHash = found[0].transactionHash;
+            console.log("redeemed event found");
 
-            await returnTransaction(redeemTxHash);
+            redeemTxHash = found[0].transactionHash;
+            const logBlock = await ethersProvider!.getBlock(found[0].blockNumber);
+            const timestampMs = logBlock?.timestamp ? logBlock.timestamp * 1000 : undefined;
+
+            await returnTransaction(redeemTxHash, timestampMs);
             return;
           }
 
@@ -327,9 +334,13 @@ async function runServer() {
             Math.abs(+tokenAmount - +amount) < 200000 ||
             Math.abs(+ethers.formatUnits(tokenAmount, tokenDecimals || 8) - +ethers.formatUnits(amount, 8)) < 1
           ) {
-            redeemTxHash = log.transactionHash;
+            console.log("transfer event found");
 
-            await returnTransaction(redeemTxHash);
+            redeemTxHash = log.transactionHash;
+            const logBlock = await ethersProvider!.getBlock(log.blockNumber);
+            const timestampMs = logBlock?.timestamp ? logBlock.timestamp * 1000 : undefined;
+
+            await returnTransaction(redeemTxHash, timestampMs);
             return;
           }
         }
