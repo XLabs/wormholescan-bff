@@ -150,7 +150,7 @@ async function runServer() {
             hasMore = addressTxns.hasNextPage;
             cursor = addressTxns.nextCursor;
 
-            console.log(JSON.stringify(addressTxns));
+            // console.log(JSON.stringify(addressTxns));
 
             if (addressTxns.data) {
               for (const txnBlock of addressTxns.data) {
