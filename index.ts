@@ -15,20 +15,21 @@ import {
   hexToUint8Array,
   makeSolanaRpcRequest,
 } from "./src/utils";
-import { Asset, Transaction } from "./src/mongodb";
+import { AlgoInfo, Asset, Transaction } from "./src/mongodb";
 
-import { Network, ChainId, Wormhole, chainIdToChain, toNative } from "@wormhole-foundation/connect-sdk";
+import { Network, ChainId, Wormhole, chainIdToChain, toNative, encoding } from "@wormhole-foundation/connect-sdk";
 import { SolanaPlatform } from "@wormhole-foundation/connect-sdk-solana";
 import { EvmPlatform } from "@wormhole-foundation/connect-sdk-evm";
 import { CosmwasmPlatform } from "@wormhole-foundation/connect-sdk-cosmwasm";
+import { AlgorandPlatform } from "@wormhole-foundation/connect-sdk-algorand";
 import "@wormhole-foundation/connect-sdk-evm-tokenbridge";
 import "@wormhole-foundation/connect-sdk-solana-tokenbridge";
 import "@wormhole-foundation/connect-sdk-cosmwasm-tokenbridge";
-import { SuiClient, getFullnodeUrl } from "@mysten/sui.js/client";
-import algosdk from "algosdk";
+import "@wormhole-foundation/connect-sdk-algorand-tokenbridge";
 
+import { SuiClient, getFullnodeUrl } from "@mysten/sui.js/client";
 import { getForeignAssetSui } from "./src/sui";
-import { getForeignAssetAlgorand } from "./src/algorand";
+import algosdk from "algosdk";
 
 dotenv.config();
 
@@ -49,6 +50,11 @@ interface WrappedAssetRequest {
   tokenChain: string;
   tokenAddress: string;
   targetChain: string;
+}
+
+interface AlgoAssetRequest {
+  network: Network;
+  tokenAddress: string;
 }
 
 const connectToDatabase = async () => {
@@ -353,6 +359,80 @@ async function runServer() {
     }
   });
 
+  app.get("/getAlgoAssetInfo", async (req, res) => {
+    const request = { ...req.query } as unknown as AlgoAssetRequest;
+    console.log("Request getAlgoAssetInfo with parameters:", JSON.stringify(request));
+
+    if (!request.tokenAddress || !request.network) {
+      res.send("Missing parameters, we need to have: tokenAddress, network");
+      return;
+    }
+
+    try {
+      const { network, tokenAddress } = request;
+
+      const savedAlgoInfo = await AlgoInfo.findOne({
+        network,
+        tokenAddress,
+      });
+
+      if (savedAlgoInfo) {
+        console.log(
+          `FOUND EXISTING: asset ${savedAlgoInfo.data.assetId}${
+            savedAlgoInfo.data.symbol ? ` with symbol ${savedAlgoInfo.data.symbol}` : ""
+          }${savedAlgoInfo.data.decimals ? ` with decimals ${savedAlgoInfo.data.decimals}` : ""}`,
+        );
+
+        res.send(savedAlgoInfo.data);
+        return;
+      }
+
+      const tokenID = Wormhole.chainAddress("Algorand", tokenAddress);
+      const assetId = "" + toNative("Algorand", tokenID.address.toUniversalAddress()).toInt();
+
+      if (!assetId) {
+        res.status(404).send("asset id not found");
+        return;
+      }
+
+      const algoUrl =
+        network.toLowerCase() === "mainnet"
+          ? "https://mainnet-api.algonode.cloud"
+          : "https://testnet-api.algonode.cloud";
+
+      const algodClient = new algosdk.Algodv2("", algoUrl, "");
+      const assetInfo = await algodClient.getAssetByID(+assetId).do();
+
+      const decimals = assetInfo?.params?.decimals;
+      const symbol = assetInfo?.params?.["unit-name"];
+
+      const newAlgoInfo = new AlgoInfo({
+        network,
+        tokenAddress,
+        data: {
+          assetId,
+          decimals,
+          symbol,
+        },
+      });
+      await newAlgoInfo.save();
+
+      console.log(`new algoInfo for ${assetId}`);
+      if (decimals && symbol) {
+        res.send({
+          assetId,
+          decimals,
+          symbol,
+        });
+      } else {
+        res.send({ assetId });
+      }
+    } catch (e) {
+      console.error("error on getAlgoAssetInfo", e);
+      res.status(404).send(`error getWrappedAsset: ${e}`);
+    }
+  });
+
   app.get("/getWrappedAsset", async (req, res) => {
     const request = { ...req.query } as unknown as WrappedAssetRequest;
     console.log("Request getWrappedAsset with parameters:", JSON.stringify(request));
@@ -387,6 +467,7 @@ async function runServer() {
         EvmPlatform,
         SolanaPlatform,
         CosmwasmPlatform,
+        AlgorandPlatform,
       ]);
 
       const tokenList: any = fs.readFileSync("./tokenList.json");
@@ -435,32 +516,7 @@ async function runServer() {
         }
       }
 
-      // ALGORAND target
-      if (targetChain === "8") {
-        const tokenBridgeContract = wh.getContracts("Algorand")?.tokenBridge;
-
-        const algoUrl =
-          network.toLowerCase() === "mainnet"
-            ? "https://mainnet-api.algonode.cloud"
-            : "https://testnet-api.algonode.cloud";
-
-        const algodClient = new algosdk.Algodv2("", algoUrl, "");
-        const nativeTokenAddress = toNative(chainIdToChain(+tokenChain as ChainId), tokenAddress);
-
-        const foreignAsset = await getForeignAssetAlgorand(
-          algodClient as any,
-          BigInt(tokenBridgeContract!),
-          +tokenChain,
-          nativeTokenAddress.toUniversalAddress().toString().replace("0x", ""),
-        );
-
-        if (foreignAsset) {
-          await returnAsset(foreignAsset.toString());
-          return;
-        }
-      }
-
-      // EVM, SOLANA, COSMWASM target
+      // EVM, SOLANA, COSMWASM, ALGORAND target
       const tokenID = Wormhole.chainAddress(chainIdToChain(+tokenChain as ChainId), tokenAddress);
       const tokenInfo = await wh.getWrappedAsset(chainIdToChain(+targetChain as ChainId), tokenID);
 

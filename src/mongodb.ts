@@ -16,3 +16,11 @@ const transactionSchema = new mongoose.Schema({
 });
 
 export const Transaction = mongoose.model("Transaction", transactionSchema);
+
+const algoInfoSchema = new mongoose.Schema({
+  network: String,
+  tokenAddress: String,
+  data: mongoose.Schema.Types.Mixed,
+});
+
+export const AlgoInfo = mongoose.model("AlgoInfo", algoInfoSchema);
