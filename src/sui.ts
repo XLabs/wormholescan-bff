@@ -1,6 +1,6 @@
 import { SuiClient, SuiObjectResponse } from "@mysten/sui.js/client";
 import { isValidSuiAddress as isValidFullSuiAddress, normalizeSuiAddress } from "@mysten/sui.js/utils";
-import { ensureHexPrefix } from "./utils";
+import { ensureHexPrefix } from "./utils.js";
 
 const isValidSuiType = (type: string): boolean => {
   const tokens = type.split("::");

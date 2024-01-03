@@ -8,14 +8,14 @@ import { createServer as createHttpServer } from "http";
 import { createServer as createHttpsServer } from "https";
 import { ethers } from "ethers";
 
-import { getChainInfo, getEthersProvider } from "./src/environment";
+import { getChainInfo, getEthersProvider } from "./src/environment.js";
 import {
   compareNumbersTrailingZeros,
   findBlockRangeByTimestamp,
   hexToUint8Array,
   makeSolanaRpcRequest,
-} from "./src/utils";
-import { AlgoInfo, Asset, Transaction } from "./src/mongodb";
+} from "./src/utils.js";
+import { AlgoInfo, Asset, Transaction } from "./src/mongodb.js";
 
 import { Network, ChainId, Wormhole, chainIdToChain, toNative, encoding } from "@wormhole-foundation/connect-sdk";
 import { SolanaPlatform } from "@wormhole-foundation/connect-sdk-solana";
@@ -28,7 +28,7 @@ import "@wormhole-foundation/connect-sdk-cosmwasm-tokenbridge";
 import "@wormhole-foundation/connect-sdk-algorand-tokenbridge";
 
 import { SuiClient, getFullnodeUrl } from "@mysten/sui.js/client";
-import { getForeignAssetSui } from "./src/sui";
+import { getForeignAssetSui } from "./src/sui.js";
 import algosdk from "algosdk";
 
 dotenv.config();
@@ -59,9 +59,7 @@ interface AlgoAssetRequest {
 
 const connectToDatabase = async () => {
   try {
-    await mongoose.connect(
-      `mongodb+srv://${process.env.MONGO_CREDENTIALS}/wrappedAssets?retryWrites=true&w=majority`,
-    );
+    await mongoose.connect( process.env.MONGO_URI );
     console.log("Connected to MongoDB correctly");
     return true;
   } catch (err) {
@@ -534,19 +532,9 @@ async function runServer() {
     }
   });
 
-  const port = process.env.NODE_ENV === "DEV" ? 8080 : 443;
-  console.log(process.env.NODE_ENV);
-  const server =
-    process.env.NODE_ENV === "DEV"
-      ? createHttpServer(app)
-      : createHttpsServer(
-          {
-            key: fs.readFileSync("/etc/letsencrypt/live/cryptotruco.com/privkey.pem"),
-            cert: fs.readFileSync("/etc/letsencrypt/live/cryptotruco.com/fullchain.pem"),
-          },
-          app,
-        );
+  const port = process.env.NODE_PORT ?? 8080;
 
+  const server = createHttpServer(app)
   server.listen(port, () => {
     console.log(`Server is running on port ${port}`);
   });

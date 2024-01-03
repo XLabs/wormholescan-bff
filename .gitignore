@@ -1,2 +1,10 @@
+.idea
+.vscode
+
 node_modules
+
 .env
+deploy/production/env.production.sh
+deploy/staging/env.staging.sh
+
+build

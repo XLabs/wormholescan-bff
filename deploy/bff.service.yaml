@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: wormholescan-bff
+  namespace: wormscan
+#  annotations:
+#    prometheus.io/scrape: "true"
+spec:
+  selector:
+    app: wormholescan-bff
+  ports:
+    - name: api
+      protocol: TCP
+      port: 8080
