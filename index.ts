@@ -125,6 +125,7 @@ async function runServer() {
 
       if (savedTransaction) {
         console.log("found existing redeem txn", savedTransaction.data);
+        res.set("Cache-Control", "public, max-age=31557600, s-maxage=31557600"); // 1 year cache
         res.send(savedTransaction.data);
         return;
       }
@@ -401,6 +402,7 @@ async function runServer() {
           }${savedAlgoInfo.data.decimals ? ` with decimals ${savedAlgoInfo.data.decimals}` : ""}`,
         );
 
+        res.set("Cache-Control", "public, max-age=31557600, s-maxage=31557600"); // 1 year cache
         res.send(savedAlgoInfo.data);
         return;
       }
@@ -478,6 +480,7 @@ async function runServer() {
           }`,
         );
 
+        res.set("Cache-Control", "public, max-age=31557600, s-maxage=31557600"); // 1 year cache
         res.send(savedAsset.data);
         return;
       }
