@@ -5,7 +5,6 @@ import fs from "fs";
 import mongoose from "mongoose";
 
 import { createServer as createHttpServer } from "http";
-import { createServer as createHttpsServer } from "https";
 import { ethers } from "ethers";
 
 import { getChainInfo, getEthersProvider } from "./src/environment.js";
@@ -57,9 +56,26 @@ interface AlgoAssetRequest {
   tokenAddress: string;
 }
 
+const tokenList: any = fs.readFileSync("./tokenList.json");
+const parsedTokens = JSON.parse(tokenList);
+
+// Middleware to set a timeout for processing a request
+const requestTimeout = (req, res, next) => {
+  const timeout = 18000;
+
+  // Set a timer to respond with a 404 status code if the request takes too long
+  const timer = setTimeout(() => {
+    res.status(404).send("Request timed out");
+  }, timeout);
+  // Attach the timer to the response object to clear it if the request completes
+  res.on("finish", () => clearTimeout(timer));
+
+  next();
+};
+
 const connectToDatabase = async () => {
   try {
-    await mongoose.connect( process.env.MONGO_URI );
+    await mongoose.connect(process.env.MONGO_URI);
     console.log("Connected to MongoDB correctly");
     return true;
   } catch (err) {
@@ -73,6 +89,9 @@ async function runServer() {
   const app = express();
   app.use(express.json({ strict: false }));
   app.use(cors());
+
+  // Apply timeout middleware to all routes
+  app.use(requestTimeout);
 
   app.get("/", (req, res) => {
     res.send("hey there");
@@ -122,6 +141,7 @@ async function runServer() {
 
         console.log(`new ${chainIdToChain(+toChain as ChainId)} redeemTxHash found! ${redeemTxHash}`);
 
+        res.set("Cache-Control", "public, max-age=31557600, s-maxage=31557600"); // 1 year cache
         res.send({ redeemTxHash, timestamp: timestampMs });
       };
 
@@ -416,6 +436,7 @@ async function runServer() {
       await newAlgoInfo.save();
 
       console.log(`new algoInfo for ${assetId}`);
+      res.set("Cache-Control", "public, max-age=31557600, s-maxage=31557600"); // 1 year cache
       if (decimals && symbol) {
         res.send({
           assetId,
@@ -468,9 +489,6 @@ async function runServer() {
         AlgorandPlatform,
       ]);
 
-      const tokenList: any = fs.readFileSync("./tokenList.json");
-      const parsedTokens = JSON.parse(tokenList);
-
       const returnAsset = async (wrappedToken: string) => {
         const tokenSymbol = parsedTokens?.[targetChain]?.[wrappedToken.toLowerCase()]?.symbol || "";
 
@@ -487,6 +505,7 @@ async function runServer() {
         await newAsset.save();
 
         console.log(`FOUND NEW: address ${wrappedToken}${tokenSymbol ? ` with symbol ${tokenSymbol}` : ""}`);
+        res.set("Cache-Control", "public, max-age=31557600, s-maxage=31557600"); // 1 year cache
         res.send({
           wrappedToken,
           tokenSymbol,
@@ -534,7 +553,7 @@ async function runServer() {
 
   const port = process.env.NODE_PORT ?? 8080;
 
-  const server = createHttpServer(app)
+  const server = createHttpServer(app);
   server.listen(port, () => {
     console.log(`Server is running on port ${port}`);
   });

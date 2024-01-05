@@ -1,9 +1,9 @@
 {
   "name": "wormholescan-utils",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "wormholescan rpc utilities",
   "main": "index.js",
-  "type":  "module",
+  "type": "module",
   "scripts": {
     "start": "tsx index.ts",
     "build": "tsc",
@@ -20,7 +20,6 @@
   },
   "author": "valentinoConti",
   "license": "ISC",
-  "type": "module",
   "dependencies": {
     "@mysten/sui.js": "^0.48.1",
     "@wormhole-foundation/connect-sdk": "0.3.0-beta.7",
