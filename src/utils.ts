@@ -76,8 +76,17 @@ export async function makeSolanaRpcRequest(network: Network, method: string, par
 
 // General Utils
 export const compareNumbersTrailingZeros = (num1: number, num2: number) => {
-  while (num1 % 10 === 0) num1 /= 10;
-  while (num2 % 10 === 0) num2 /= 10;
+  let count = 30;
+  while (count > 0 && num1 % 10 === 0) {
+    num1 /= 10;
+    count--;
+  }
+
+  count = 30;
+  while (count > 0 && num2 % 10 === 0) {
+    num2 /= 10;
+    count--;
+  }
   return num1 === num2;
 };
 
