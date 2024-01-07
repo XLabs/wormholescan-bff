@@ -1808,6 +1808,10 @@
       "logo": "https://raw.githubusercontent.com/wormhole-foundation/wormhole-token-list/main/assets/TBTC_wh.png",
       "symbol": "TBTC"
     },
+    "0x50da645f148798f68ef2d7db7c1cb22a6819bb2c": {
+      "logo": "https://assets.coingecko.com/coins/images/31401/standard/sticker_%281%29.jpg?1702371083",
+      "symbol": "SPX6900"
+    },
     "0xd9541b08b375d58ae104ec247d7443d2d7235d64": {
       "logo": "https://raw.githubusercontent.com/wormhole-foundation/wormhole-token-list/main/assets/WOM_wh.png",
       "symbol": "WOM"

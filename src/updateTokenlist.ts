@@ -4,7 +4,7 @@ const updateTokenList = async () => {
   const resp = await fetch(
     "https://raw.githubusercontent.com/certusone/wormhole-token-list/main/src/markets.json",
   );
-  const response = await resp.json();
+  const response: any = await resp.json();
 
   const tokenEntries: [string, { logo: string; symbol: string }][] = Object.entries(response.tokens);
 
@@ -23,7 +23,7 @@ const updateTokenList = async () => {
     result[data[0]] = data[1];
   });
 
-  await writeFile("tokenList.json", JSON.stringify(result));
+  await writeFile("src/tokenList.json", JSON.stringify(result));
   console.log("DONE!");
 };
 

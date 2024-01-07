@@ -5,17 +5,19 @@ FROM node as build-app
 WORKDIR /usr/src/app
 COPY package.json yarn.lock ./
 RUN yarn
-COPY --chown=node:node index.ts tsconfig.json updateTokenlist.ts ./
+COPY --chown=node:node index.ts tsconfig.json ./
 COPY --chown=node:node src/ ./src
 RUN yarn build
-RUN npx tsx updateTokenlist.ts
+RUN npx tsx src/updateTokenlist.ts
+RUN yarn prettier --write src/tokenList.json
+RUN cp src/tokenList.json build/src/
 #### END Build App ####
 
 FROM node:lts-alpine3.19@sha256:e96618520c7db4c3e082648678ab72a49b73367b9a1e7884cf75ac30a198e454 as final
 WORKDIR /usr/src/app
 COPY --chown=node:node package.json yarn.lock ./
 RUN yarn --production
-COPY --chown=node:node --from=build-app /usr/src/app/tokenList.json /usr/src/app/build ./
+COPY --chown=node:node --from=build-app /usr/src/app/build ./
 USER node
 EXPOSE 8080
 CMD ["node", "index.js"]

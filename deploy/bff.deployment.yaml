@@ -22,15 +22,6 @@ spec:
         - name: bff
           image: $AWS_ACCOUNT.dkr.ecr.us-east-2.amazonaws.com/wormholescan-bff:$TAG
           imagePullPolicy: Always
-          # uncomment to explore filesystem during crash loop
-          #        command: [ "/bin/sh", "-c", "--" ]
-          #        args: [ "while true; do sleep 30; done;" ]
-#          resources:
-#            requests:
-#              memory: 600Mi
-#            limits:
-#              cpu: 1000m
-#              memory: 2000Mi
           env:
             - name: NODE_PORT
               value: "8080"
