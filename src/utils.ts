@@ -7,7 +7,9 @@ export const findBlockRangeByTimestamp = async (ethersProvider: JsonRpcProvider,
   let endBlock = lastBlock;
   const maxBlockDifference = 1000; // Max difference between blocks
 
-  while (startBlock <= endBlock) {
+  let limit = 60;
+  while (startBlock <= endBlock && limit > 0) {
+    limit--;
     const midBlock = Math.floor((startBlock + endBlock) / 2);
     const midBlockInfo = await ethersProvider.getBlock(midBlock);
 

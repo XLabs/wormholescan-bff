@@ -452,7 +452,8 @@ export class ApiController {
       // EVM GET REDEEM TXN HASH
       const evmChainInfo = getChainInfo(network, +toChain as ChainId);
       if (!!evmChainInfo) {
-        const ethersProvider = getEthersProvider(evmChainInfo);
+        // const ethersProvider = getEthersProvider(evmChainInfo);
+        const ethersProvider = getEthersProvider(network, +toChain as ChainId);
         const blockRanges = await findBlockRangeByTimestamp(ethersProvider!, timestamp);
 
         if (!blockRanges) {

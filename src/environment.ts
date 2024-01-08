@@ -5,7 +5,7 @@ const MAINNET_RPCS: { [key in Chain]?: string } = {
   Acala: "https://eth-rpc-acala.aca-api.network",
   Algorand: "https://mainnet-api.algonode.cloud",
   Aptos: "https://fullnode.mainnet.aptoslabs.com/",
-  Arbitrum: "https://arb1.arbitrum.io/rpc",
+  Arbitrum: "https://arbitrum.llamarpc.com",
   Avalanche: "https://rpc.ankr.com/avalanche",
   Base: "https://mainnet.base.org",
   Bsc: "https://bsc-dataseed2.defibit.io",
@@ -141,8 +141,26 @@ export const mainnetEnv: Environment = {
   ],
 };
 
-export function getEthersProvider(chainInfo: ChainInfo) {
-  if (chainInfo?.rpcUrl) return new ethers.JsonRpcProvider(chainInfo.rpcUrl);
+const mainnetProviders = {};
+mainnetEnv.chainInfos.forEach(chain => {
+  mainnetProviders[chain.chainId] = new ethers.JsonRpcProvider(chain.rpcUrl);
+});
+
+const testnetProviders = {};
+testnetEnv.chainInfos.forEach(chain => {
+  testnetProviders[chain.chainId] = new ethers.JsonRpcProvider(chain.rpcUrl);
+});
+
+export function getEthersProvider(network: string, chainId: ChainId) {
+  // if (chainInfo?.rpcUrl) return new ethers.JsonRpcProvider(chainInfo.rpcUrl);
+
+  if (network.toLowerCase() === "mainnet") {
+    if (mainnetProviders[chainId]) return mainnetProviders[chainId];
+  }
+
+  if (network.toLowerCase() === "testnet") {
+    if (testnetProviders[chainId]) return testnetProviders[chainId];
+  }
 
   return null;
 }
