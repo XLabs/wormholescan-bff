@@ -5,6 +5,7 @@ const assetSchema = new mongoose.Schema({
   tokenAddress: { type: String, index: true },
   tokenChain: String,
   targetChain: String,
+  gatewayChain: String,
   data: mongoose.Schema.Types.Mixed,
 });
 

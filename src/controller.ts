@@ -1,7 +1,7 @@
 import { Context, Next } from "koa";
 import { ethers } from "ethers";
 import { AlgoInfo, Asset, Transaction } from "./mongodb.js";
-import { ChainId, chainIdToChain, toNative, Wormhole } from "@wormhole-foundation/connect-sdk";
+import { ChainId, chainIdToChain, Network, toNative, Wormhole } from "@wormhole-foundation/connect-sdk";
 import algosdk from "algosdk";
 import { getChainInfo, getEthersProvider } from "./environment.js";
 import {
@@ -13,7 +13,12 @@ import {
 import { AlgoAssetRequest, InfoRequest, WrappedAssetRequest } from "../index.js";
 import { EvmPlatform } from "@wormhole-foundation/connect-sdk-evm";
 import { SolanaPlatform } from "@wormhole-foundation/connect-sdk-solana";
-import { CosmwasmPlatform } from "@wormhole-foundation/connect-sdk-cosmwasm";
+import {
+  CosmwasmAddress,
+  CosmwasmChains,
+  CosmwasmPlatform,
+  Gateway,
+} from "@wormhole-foundation/connect-sdk-cosmwasm";
 import { AlgorandPlatform } from "@wormhole-foundation/connect-sdk-algorand";
 import { getFullnodeUrl, SuiClient } from "@mysten/sui.js/client";
 import { getForeignAssetSui } from "./sui.js";
@@ -44,7 +49,10 @@ export class ApiController {
     }
 
     try {
-      const { network, tokenChain, tokenAddress, targetChain } = request;
+      const { tokenChain, tokenAddress, targetChain } = request;
+      const gatewayChain = !!request.gatewayChain ? request.gatewayChain : "";
+      const network = (request.network.toLowerCase() === "mainnet" ? "Mainnet" : "Testnet") as Network;
+
       const key = `${network}-${tokenChain}-${tokenAddress}-${targetChain}`;
 
       if (this.wrappedAssetCache.has(key)) {
@@ -65,6 +73,7 @@ export class ApiController {
         tokenChain,
         tokenAddress,
         targetChain,
+        gatewayChain,
       }).lean();
 
       if (savedAsset) {
@@ -81,12 +90,7 @@ export class ApiController {
         return;
       }
 
-      const wh = new Wormhole(network.toLowerCase() === "mainnet" ? "Mainnet" : "Testnet", [
-        EvmPlatform,
-        SolanaPlatform,
-        CosmwasmPlatform,
-        AlgorandPlatform,
-      ]);
+      const wh = new Wormhole(network, [EvmPlatform, SolanaPlatform, CosmwasmPlatform, AlgorandPlatform]);
 
       const returnAsset = async (wrappedToken: string) => {
         let tokenSymbol = parsedTokens?.[targetChain]?.[wrappedToken.toLowerCase()]?.symbol || "";
@@ -96,6 +100,7 @@ export class ApiController {
           tokenChain,
           tokenAddress,
           targetChain,
+          gatewayChain,
           data: {
             wrappedToken,
             tokenSymbol,
@@ -105,6 +110,7 @@ export class ApiController {
 
         this.wrappedAssetCache.set(key, newAsset);
         console.log(`FOUND NEW: address ${wrappedToken}${tokenSymbol ? ` with symbol ${tokenSymbol}` : ""}`);
+
         ctx.set("Cache-Control", "public, max-age=31557600, s-maxage=31557600"); // 1 year cache
         ctx.body = {
           wrappedToken,
@@ -114,7 +120,7 @@ export class ApiController {
 
       // SUI target
       if (targetChain === "21") {
-        const which = network.toLowerCase() === "mainnet" ? "mainnet" : "testnet";
+        const which = network === "Mainnet" ? "mainnet" : "testnet";
         const suiClient = new SuiClient({ url: getFullnodeUrl(which) });
         const tokenBridgeContract = wh.getContracts("Sui")?.tokenBridge;
 
@@ -136,8 +142,32 @@ export class ApiController {
       // EVM, SOLANA, COSMWASM, ALGORAND target
       const tokenID = Wormhole.chainAddress(chainIdToChain(+tokenChain as ChainId), tokenAddress);
       const tokenInfo = await wh.getWrappedAsset(chainIdToChain(+targetChain as ChainId), tokenID);
-
       const foreignAsset = tokenInfo.address.toString();
+
+      // COSMWASM: Wormhole Gateway process
+      if (tokenInfo.chain === "Wormchain") {
+        console.log("Gateway asset!");
+        if (!gatewayChain) throw new Error("gatewayChain parameter should be there for Wormhole Gateway");
+
+        const cosmWasmPlatform = wh.getPlatform("Cosmwasm");
+        const gateway = new Gateway("Wormchain", cosmWasmPlatform);
+
+        const factoryToken = (await gateway.getWrappedAsset(tokenID)).unwrap();
+        console.log({ factoryToken });
+
+        if (factoryToken) {
+          const ibcDenom = Gateway.deriveIbcDenom(
+            network,
+            chainIdToChain(+gatewayChain as ChainId) as CosmwasmChains,
+            new CosmwasmAddress(factoryToken).toString(),
+          )?.toString();
+
+          if (ibcDenom) {
+            await returnAsset(ibcDenom);
+            return;
+          }
+        }
+      }
 
       if (foreignAsset) {
         await returnAsset(foreignAsset);

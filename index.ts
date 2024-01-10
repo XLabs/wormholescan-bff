@@ -30,6 +30,7 @@ export interface WrappedAssetRequest {
   tokenChain: string;
   tokenAddress: string;
   targetChain: string;
+  gatewayChain?: string;
 }
 
 export interface AlgoAssetRequest {
