@@ -153,7 +153,6 @@ export class ApiController {
         const gateway = new Gateway("Wormchain", cosmWasmPlatform);
 
         const factoryToken = (await gateway.getWrappedAsset(tokenID)).unwrap();
-        console.log({ factoryToken });
 
         if (factoryToken) {
           const ibcDenom = Gateway.deriveIbcDenom(
@@ -283,6 +282,11 @@ export class ApiController {
     }
   };
 
+  protected redeemTxCache: LRUCache<string, any> = new LRUCache({
+    max: 2500,
+    allowStale: true,
+  });
+
   getRedeemTx = async (ctx: Context, next: Next) => {
     const request = { ...ctx.query } as unknown as InfoRequest;
     console.log("Request getRedeemTxn with parameters:", JSON.stringify(request));
@@ -305,11 +309,23 @@ export class ApiController {
 
     try {
       const { address, fromChain, toChain, network, tokenAddress, timestamp, amount, txHash, sequence } = request;
+      const key = `${network}-${txHash}`;
+
+      if (this.redeemTxCache.has(key)) {
+        const savedRedeemInfo = this.redeemTxCache.get(key);
+        console.log(`FOUND EXISTING IN LOCAL CACHE: redeem txn ${savedRedeemInfo.data.redeemTxHash}`);
+
+        ctx.set("Cache-Control", "public, max-age=31557600, s-maxage=31557600"); // 1 year cache
+        ctx.body = savedRedeemInfo.data;
+        return;
+      }
 
       const savedTransaction = await Transaction.findOne({ txHash });
 
       if (savedTransaction) {
-        console.log("found existing redeem txn", savedTransaction.data);
+        this.redeemTxCache.set(key, savedTransaction);
+
+        console.log("FOUND EXISTING IN DB: redeem txn", savedTransaction.data?.redeemTxHash);
         ctx.set("Cache-Control", "public, max-age=31557600, s-maxage=31557600"); // 1 year cache
         ctx.body = savedTransaction.data;
         return;
@@ -324,6 +340,8 @@ export class ApiController {
           },
         });
         await newTransaction.save();
+
+        this.redeemTxCache.set(key, newTransaction);
 
         console.log(`new ${chainIdToChain(+toChain as ChainId)} redeemTxHash found! ${redeemTxHash}`);
 
@@ -359,8 +377,6 @@ export class ApiController {
             ii = ii + 1;
             hasMore = addressTxns.hasNextPage;
             cursor = addressTxns.nextCursor;
-
-            // console.log(JSON.stringify(addressTxns));
 
             if (addressTxns.data) {
               for (const txnBlock of addressTxns.data) {
