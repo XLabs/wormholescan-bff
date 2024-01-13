@@ -507,11 +507,14 @@ export class ApiController {
           return null;
         }
 
-        const transferEventSignature = "Transfer(address,address,uint256)";
-        const addressToFilter = ethers.zeroPadValue(ethers.getAddress(address), 32);
-
         const redeemedEventSignature = "Redeemed(uint16,bytes32,uint64)";
         const sequenceToFilter = ethers.zeroPadValue("0x" + BigInt(+sequence).toString(16).padStart(64, "0"), 32);
+
+        const transferRedeemedEventSignature = "TransferRedeemed(uint16,bytes32,uint64)";
+        const chainToFilter = ethers.zeroPadValue("0x" + BigInt(+fromChain).toString(16).padStart(64, "0"), 32);
+
+        const transferEventSignature = "Transfer(address,address,uint256)";
+        const addressToFilter = ethers.zeroPadValue(ethers.getAddress(address), 32);
 
         let redeemTxHash: string | null = null;
         let logs: Array<ethers.Log> = [];
@@ -524,12 +527,30 @@ export class ApiController {
             topics: [ethers.id(redeemedEventSignature), null, null, sequenceToFilter],
           };
 
-          const found = await ethersProvider!.getLogs(filterRedeemed);
-          if (found.length) {
+          const foundRedeem = await ethersProvider!.getLogs(filterRedeemed);
+          if (foundRedeem.length) {
             console.log("redeemed event found");
 
-            redeemTxHash = found[0].transactionHash;
-            const logBlock = await ethersProvider!.getBlock(found[0].blockNumber);
+            redeemTxHash = foundRedeem[0].transactionHash;
+            const logBlock = await ethersProvider!.getBlock(foundRedeem[0].blockNumber);
+            const timestampMs = logBlock?.timestamp ? logBlock.timestamp * 1000 : undefined;
+
+            await returnTransaction(redeemTxHash, timestampMs);
+            return;
+          }
+
+          const filterTransferRedeem = {
+            fromBlock: blockRange[0],
+            toBlock: blockRange[1],
+            topics: [ethers.id(transferRedeemedEventSignature), chainToFilter, null, sequenceToFilter],
+          };
+
+          const foundTransferRedeem = await ethersProvider!.getLogs(filterTransferRedeem);
+          if (foundTransferRedeem.length) {
+            console.log("transferRedeemed event found");
+
+            redeemTxHash = foundTransferRedeem[0].transactionHash;
+            const logBlock = await ethersProvider!.getBlock(foundTransferRedeem[0].blockNumber);
             const timestampMs = logBlock?.timestamp ? logBlock.timestamp * 1000 : undefined;
 
             await returnTransaction(redeemTxHash, timestampMs);
@@ -560,16 +581,17 @@ export class ApiController {
 
           if (
             Math.abs(+tokenAmount - +amount) < 200000 ||
-            Math.abs(+ethers.formatUnits(tokenAmount, tokenDecimals || 8) - +ethers.formatUnits(amount, 8)) < 1
+            Math.abs(+ethers.formatUnits(tokenAmount, tokenDecimals || 8) - +ethers.formatUnits(amount, 8)) < 0.5
           ) {
-            console.log("transfer event found");
+            console.log("Transfer event found");
 
             redeemTxHash = log.transactionHash;
             const logBlock = await ethersProvider!.getBlock(log.blockNumber);
             const timestampMs = logBlock?.timestamp ? logBlock.timestamp * 1000 : undefined;
-
-            await returnTransaction(redeemTxHash, timestampMs);
-            return;
+            if (new Date(timestamp) < new Date(timestampMs)) {
+              await returnTransaction(redeemTxHash, timestampMs);
+              return;
+            }
           }
         }
       }

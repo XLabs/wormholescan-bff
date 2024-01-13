@@ -31,7 +31,7 @@ export const findBlockRangeByTimestamp = async (ethersProvider: JsonRpcProvider,
         [Math.max(0, midBlock + maxBlockDifference * 3), Math.min(lastBlock, midBlock + maxBlockDifference * 5)],
         [Math.max(0, midBlock + maxBlockDifference * 5), Math.min(lastBlock, midBlock + maxBlockDifference * 7)],
         [Math.max(0, midBlock + maxBlockDifference * 7), Math.min(lastBlock, midBlock + maxBlockDifference * 9)],
-        [Math.max(0, midBlock + maxBlockDifference * 9), Math.min(lastBlock, midBlock + maxBlockDifference * 10)],
+        [Math.max(0, midBlock + maxBlockDifference * 9), Math.min(lastBlock, midBlock + maxBlockDifference * 11)],
       ];
 
       return blockRanges;
