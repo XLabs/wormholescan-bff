@@ -5,7 +5,7 @@ const MAINNET_RPCS: { [key in Chain]?: string } = {
   Acala: "https://eth-rpc-acala.aca-api.network",
   Algorand: "https://mainnet-api.algonode.cloud",
   Aptos: "https://fullnode.mainnet.aptoslabs.com/",
-  Arbitrum: "https://arbitrum.llamarpc.com",
+  Arbitrum: "https://rpc.ankr.com/arbitrum",
   Avalanche: "https://rpc.ankr.com/avalanche",
   Base: "https://mainnet.base.org",
   Bsc: "https://bsc-dataseed2.defibit.io",
