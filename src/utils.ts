@@ -17,6 +17,18 @@ export const findBlockRangeByTimestamp = async (ethersProvider: JsonRpcProvider,
     const timestampDiff = Math.abs(midBlockInfo?.timestamp! - Date.parse(targetTimestamp) / 1000);
 
     console.log({ timestampDiff });
+    if (isNaN(timestampDiff)) {
+      console.log({
+        startBlock,
+        endBlock,
+        lastBlock,
+        midBlock,
+        midBlockInfo: JSON.stringify(midBlockInfo),
+        midblockTime: midBlockInfo?.timestamp,
+        targetTime: Date.parse(targetTimestamp) / 1000,
+      });
+      break;
+    }
 
     if (timestampDiff <= 1000) {
       console.log({ midBlock });

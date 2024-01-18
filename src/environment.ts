@@ -4,11 +4,11 @@ import { Chain, ChainId, Network } from "@wormhole-foundation/connect-sdk";
 const MAINNET_RPCS: { [key in Chain]?: string } = {
   Acala: "https://eth-rpc-acala.aca-api.network",
   Algorand: "https://mainnet-api.algonode.cloud",
-  Aptos: "https://fullnode.mainnet.aptoslabs.com/",
+  Aptos: "https://fullnode.mainnet.aptoslabs.com",
   Arbitrum: "https://rpc.ankr.com/arbitrum",
   Avalanche: "https://rpc.ankr.com/avalanche",
   Base: "https://mainnet.base.org",
-  Bsc: "https://bsc-dataseed2.defibit.io",
+  Bsc: "https://1rpc.io/bnb",
   Celo: "https://forno.celo.org",
   Ethereum: "https://rpc.ankr.com/eth",
   Fantom: "https://rpc.ankr.com/fantom",
