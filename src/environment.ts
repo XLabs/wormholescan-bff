@@ -37,6 +37,11 @@ const TESTNET_RPCS: { [key in Chain]?: string } = {
   Moonbeam: "https://rpc.api.moonbase.moonbeam.network",
   Optimism: "https://goerli.optimism.io",
   Polygon: "https://rpc.ankr.com/polygon_mumbai",
+
+  ArbitrumSepolia: "https://sepolia-rollup.arbitrum.io/rpc",
+  BaseSepolia: "https://sepolia.base.org",
+  Sepolia: "https://ethereum-sepolia.publicnode.com",
+  OptimismSepolia: "https://sepolia.optimism.io",
 };
 
 export type Environment = {
@@ -87,6 +92,22 @@ export const testnetEnv: Environment = {
     {
       chainId: 24 as ChainId,
       rpcUrl: TESTNET_RPCS.Optimism || "",
+    },
+    {
+      chainId: 10002 as ChainId,
+      rpcUrl: TESTNET_RPCS.Sepolia || "",
+    },
+    {
+      chainId: 10003 as ChainId,
+      rpcUrl: TESTNET_RPCS.ArbitrumSepolia || "",
+    },
+    {
+      chainId: 10004 as ChainId,
+      rpcUrl: TESTNET_RPCS.BaseSepolia || "",
+    },
+    {
+      chainId: 10005 as ChainId,
+      rpcUrl: TESTNET_RPCS.OptimismSepolia || "",
     },
   ],
 };

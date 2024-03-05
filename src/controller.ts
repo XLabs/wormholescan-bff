@@ -507,6 +507,8 @@ export class ApiController {
           return null;
         }
 
+        const receivedMessageSignature = "ReceivedMessage(bytes32,uint16,bytes32,uint64)";
+
         const redeemedEventSignature = "Redeemed(uint16,bytes32,uint64)";
         const sequenceToFilter = ethers.zeroPadValue("0x" + BigInt(+sequence).toString(16).padStart(64, "0"), 32);
 
@@ -555,6 +557,36 @@ export class ApiController {
 
             await returnTransaction(redeemTxHash, timestampMs);
             return;
+          }
+
+          const filterReceivedMessage = {
+            fromBlock: blockRange[0],
+            toBlock: blockRange[1],
+            topics: [ethers.id(receivedMessageSignature)],
+          };
+
+          const foundReceivedMessage = await ethersProvider!.getLogs(filterReceivedMessage);
+          if (foundReceivedMessage.length) {
+            console.log("received message event found");
+
+            const decodedData = ethers.AbiCoder.defaultAbiCoder().decode(
+              ["bytes32", "uint16", "bytes32", "uint64"],
+              foundReceivedMessage[0].data,
+            );
+
+            if (
+              decodedData?.length === 4 &&
+              decodedData[1]?.toString() === `${fromChain}` &&
+              decodedData[3]?.toString() === `${sequence}`
+            ) {
+              redeemTxHash = foundReceivedMessage[0].transactionHash;
+
+              const logBlock = await ethersProvider!.getBlock(foundReceivedMessage[0].blockNumber);
+              const timestampMs = logBlock?.timestamp ? logBlock.timestamp * 1000 : undefined;
+
+              await returnTransaction(redeemTxHash, timestampMs);
+              return;
+            }
           }
 
           const filterTransfer = {
