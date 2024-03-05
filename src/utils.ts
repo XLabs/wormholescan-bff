@@ -1,11 +1,12 @@
 import { Network } from "@wormhole-foundation/connect-sdk";
 import { JsonRpcProvider } from "ethers";
 
+export const MAX_BLOCK_DIFFERENCE = 1000; // Max difference between blocks
+
 export const findBlockRangeByTimestamp = async (ethersProvider: JsonRpcProvider, targetTimestamp) => {
   const lastBlock = await ethersProvider.getBlockNumber();
   let startBlock = 0;
   let endBlock = lastBlock;
-  const maxBlockDifference = 1000; // Max difference between blocks
 
   let limit = 60;
   while (startBlock <= endBlock && limit > 0) {
@@ -34,16 +35,28 @@ export const findBlockRangeByTimestamp = async (ethersProvider: JsonRpcProvider,
       console.log({ midBlock });
 
       const blockRanges = [
-        // [Math.max(0, midBlock - maxBlockDifference * 9), Math.min(lastBlock, midBlock - maxBlockDifference * 7)],
-        // [Math.max(0, midBlock - maxBlockDifference * 7), Math.min(lastBlock, midBlock - maxBlockDifference * 5)],
-        // [Math.max(0, midBlock - maxBlockDifference * 5), Math.min(lastBlock, midBlock - maxBlockDifference * 3)],
-        [Math.max(0, midBlock - maxBlockDifference * 3), Math.min(lastBlock, midBlock - maxBlockDifference)],
-        [Math.max(0, midBlock - maxBlockDifference), Math.min(lastBlock, midBlock + maxBlockDifference)],
-        [Math.max(0, midBlock + maxBlockDifference), Math.min(lastBlock, midBlock + maxBlockDifference * 3)],
-        [Math.max(0, midBlock + maxBlockDifference * 3), Math.min(lastBlock, midBlock + maxBlockDifference * 5)],
-        [Math.max(0, midBlock + maxBlockDifference * 5), Math.min(lastBlock, midBlock + maxBlockDifference * 7)],
-        [Math.max(0, midBlock + maxBlockDifference * 7), Math.min(lastBlock, midBlock + maxBlockDifference * 9)],
-        [Math.max(0, midBlock + maxBlockDifference * 9), Math.min(lastBlock, midBlock + maxBlockDifference * 11)],
+        // [Math.max(0, midBlock - MAX_BLOCK_DIFFERENCE * 9), Math.min(lastBlock, midBlock - MAX_BLOCK_DIFFERENCE * 7)],
+        // [Math.max(0, midBlock - MAX_BLOCK_DIFFERENCE * 7), Math.min(lastBlock, midBlock - MAX_BLOCK_DIFFERENCE * 5)],
+        // [Math.max(0, midBlock - MAX_BLOCK_DIFFERENCE * 5), Math.min(lastBlock, midBlock - MAX_BLOCK_DIFFERENCE * 3)],
+        [Math.max(0, midBlock - MAX_BLOCK_DIFFERENCE * 3), Math.min(lastBlock, midBlock - MAX_BLOCK_DIFFERENCE)],
+        [Math.max(0, midBlock - MAX_BLOCK_DIFFERENCE), Math.min(lastBlock, midBlock + MAX_BLOCK_DIFFERENCE)],
+        [Math.max(0, midBlock + MAX_BLOCK_DIFFERENCE), Math.min(lastBlock, midBlock + MAX_BLOCK_DIFFERENCE * 3)],
+        [
+          Math.max(0, midBlock + MAX_BLOCK_DIFFERENCE * 3),
+          Math.min(lastBlock, midBlock + MAX_BLOCK_DIFFERENCE * 5),
+        ],
+        [
+          Math.max(0, midBlock + MAX_BLOCK_DIFFERENCE * 5),
+          Math.min(lastBlock, midBlock + MAX_BLOCK_DIFFERENCE * 7),
+        ],
+        [
+          Math.max(0, midBlock + MAX_BLOCK_DIFFERENCE * 7),
+          Math.min(lastBlock, midBlock + MAX_BLOCK_DIFFERENCE * 9),
+        ],
+        [
+          Math.max(0, midBlock + MAX_BLOCK_DIFFERENCE * 9),
+          Math.min(lastBlock, midBlock + MAX_BLOCK_DIFFERENCE * 11),
+        ],
       ];
 
       return blockRanges;

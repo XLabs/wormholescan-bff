@@ -40,7 +40,7 @@ const TESTNET_RPCS: { [key in Chain]?: string } = {
 
   ArbitrumSepolia: "https://sepolia-rollup.arbitrum.io/rpc",
   BaseSepolia: "https://sepolia.base.org",
-  Sepolia: "https://ethereum-sepolia.publicnode.com",
+  Sepolia: "https://rpc.sepolia.org",
   OptimismSepolia: "https://sepolia.optimism.io",
 };
 

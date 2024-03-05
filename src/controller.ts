@@ -5,6 +5,7 @@ import { ChainId, chainIdToChain, Network, toNative, Wormhole } from "@wormhole-
 import algosdk from "algosdk";
 import { getChainInfo, getEthersProvider } from "./environment.js";
 import {
+  MAX_BLOCK_DIFFERENCE,
   compareNumbersTrailingZeros,
   findBlockRangeByTimestamp,
   hexToUint8Array,
@@ -525,21 +526,19 @@ export class ApiController {
           return null;
         }
 
-        const receivedMessageSignature = "ReceivedMessage(bytes32,uint16,bytes32,uint64)";
-
-        const redeemedEventSignature = "Redeemed(uint16,bytes32,uint64)";
         const sequenceToFilter = ethers.zeroPadValue("0x" + BigInt(+sequence).toString(16).padStart(64, "0"), 32);
-
-        const transferRedeemedEventSignature = "TransferRedeemed(uint16,bytes32,uint64)";
         const chainToFilter = ethers.zeroPadValue("0x" + BigInt(+fromChain).toString(16).padStart(64, "0"), 32);
-
-        const transferEventSignature = "Transfer(address,address,uint256)";
         const addressToFilter = ethers.zeroPadValue(ethers.getAddress(address), 32);
 
         let redeemTxHash: string | null = null;
         let logs: Array<ethers.Log> = [];
 
         for (const blockRange of blockRanges) {
+          if (blockRange[0] > blockRange[1]) {
+            blockRange[0] = blockRange[1] - MAX_BLOCK_DIFFERENCE;
+          }
+
+          const redeemedEventSignature = "Redeemed(uint16,bytes32,uint64)";
           const filterRedeemed = {
             fromBlock: blockRange[0],
             toBlock: blockRange[1],
@@ -559,6 +558,7 @@ export class ApiController {
             return;
           }
 
+          const transferRedeemedEventSignature = "TransferRedeemed(uint16,bytes32,uint64)";
           const filterTransferRedeem = {
             fromBlock: blockRange[0],
             toBlock: blockRange[1],
@@ -577,6 +577,8 @@ export class ApiController {
             return;
           }
 
+          // NTT
+          const receivedMessageSignature = "ReceivedMessage(bytes32,uint16,bytes32,uint64)";
           const filterReceivedMessage = {
             fromBlock: blockRange[0],
             toBlock: blockRange[1],
@@ -607,6 +609,7 @@ export class ApiController {
             }
           }
 
+          const transferEventSignature = "Transfer(address,address,uint256)";
           const filterTransfer = {
             fromBlock: blockRange[0],
             toBlock: blockRange[1],
