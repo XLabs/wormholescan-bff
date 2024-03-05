@@ -462,6 +462,23 @@ export class ApiController {
                   ) {
                     if (txInfo.transaction?.signatures && txInfo.transaction?.signatures.length === 1) {
                       redeemTxHash = txInfo.transaction.signatures[0];
+                      console.log("Native SOL transfer redeem detected");
+
+                      await returnTransaction(redeemTxHash!, +txInfo?.blockTime * 1000 || undefined);
+                      return;
+                    }
+                  }
+                  // NTT transfers
+                  else if (
+                    innerInstruction.instructions.some(
+                      instruction =>
+                        instruction?.parsed?.info?.mint?.toLowerCase() === tokenAddress.toLowerCase() &&
+                        instruction?.parsed?.info?.tokenAmount?.uiAmount === +amount / 10 ** 8,
+                    )
+                  ) {
+                    if (txInfo.transaction?.signatures && txInfo.transaction?.signatures.length === 1) {
+                      redeemTxHash = txInfo.transaction.signatures[0];
+                      console.log("NTT transfer redeem detected");
 
                       await returnTransaction(redeemTxHash!, +txInfo?.blockTime * 1000 || undefined);
                       return;
@@ -478,6 +495,7 @@ export class ApiController {
                       ) {
                         if (txInfo.transaction?.signatures && txInfo.transaction?.signatures.length === 1) {
                           redeemTxHash = txInfo.transaction.signatures[0];
+                          console.log("SPL token transfer redeem detected");
 
                           await returnTransaction(redeemTxHash!, +txInfo?.blockTime * 1000 || undefined);
                           return;
