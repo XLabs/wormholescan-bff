@@ -38,6 +38,11 @@ export interface AlgoAssetRequest {
   tokenAddress: string;
 }
 
+export interface SolanaCctpRequest {
+  network: Network;
+  txHash: string;
+}
+
 const connectToDatabase = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
@@ -65,6 +70,8 @@ async function runServer() {
   router.get("/getAlgoAssetInfo", ctrl.getAlgoAssetInfo);
 
   router.get("/getWrappedAsset", ctrl.getWrappedAsset);
+
+  router.get("/getSolanaCctp", ctrl.getSolanaCctp);
 
   const port = process.env.NODE_PORT ?? 8080;
 

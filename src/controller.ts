@@ -6,12 +6,13 @@ import algosdk from "algosdk";
 import { getChainInfo, getEthersProvider } from "./environment.js";
 import {
   MAX_BLOCK_DIFFERENCE,
+  SOLANA_MANUAL_CCTP_CONTRACT,
   compareNumbersTrailingZeros,
   findBlockRangeByTimestamp,
   hexToUint8Array,
   makeSolanaRpcRequest,
 } from "./utils.js";
-import { AlgoAssetRequest, InfoRequest, WrappedAssetRequest } from "../index.js";
+import { AlgoAssetRequest, InfoRequest, SolanaCctpRequest, WrappedAssetRequest } from "../index.js";
 import { EvmPlatform } from "@wormhole-foundation/connect-sdk-evm";
 import { SolanaPlatform } from "@wormhole-foundation/connect-sdk-solana";
 import {
@@ -27,6 +28,7 @@ import fs from "fs";
 import { LRUCache } from "lru-cache";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import base58 from "bs58";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -655,6 +657,84 @@ export class ApiController {
       console.error("catch!!", err);
       ctx.status = 404;
       ctx.body = `error getting info: ${err}`;
+    }
+  };
+
+  protected solanaCctpCache: LRUCache<string, any> = new LRUCache({
+    max: 2500,
+    allowStale: true,
+  });
+
+  getSolanaCctp = async (ctx: Context, next: Next) => {
+    const request = { ...ctx.query } as unknown as SolanaCctpRequest;
+    console.log("Request getRedeemTxn with parameters:", JSON.stringify(request));
+
+    if (!request.network || !request.txHash) {
+      ctx.body = "Missing parameters, we need to have: network, txHash";
+      return;
+    }
+
+    try {
+      const { network, txHash } = request;
+      const key = `${network}-${txHash}`;
+
+      if (this.solanaCctpCache.has(key)) {
+        const savedSolanaCctp = this.solanaCctpCache.get(key);
+        console.log(`FOUND EXISTING IN LOCAL CACHE: solana cctp for ${txHash}`);
+
+        ctx.set("Cache-Control", "public, max-age=31557600, s-maxage=31557600"); // 1 year cache
+        ctx.body = savedSolanaCctp;
+        return;
+      }
+
+      // get transfers for the address
+      const { result } = await makeSolanaRpcRequest(network, "getTransaction", [
+        txHash,
+        { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 },
+      ]);
+
+      if (!!result.meta?.innerInstructions?.length) {
+        for (const innerInstruction of result.meta?.innerInstructions) {
+          if (!!innerInstruction.instructions?.length) {
+            let info: any = {};
+
+            for (const instruction of innerInstruction.instructions) {
+              if (instruction.program === "spl-token" && instruction.parsed?.type === "burn") {
+                info["sourceAddress"] = instruction.parsed?.info?.authority;
+                info["amount"] = instruction.parsed?.info?.amount;
+                info["sourceTokenAddress"] = instruction.parsed?.info?.mint;
+                info["timestamp"] = result.blockTime * 1000;
+              }
+
+              if (instruction.programId === SOLANA_MANUAL_CCTP_CONTRACT) {
+                const decodedData = base58.decode(instruction.data);
+                const hexData = Buffer.from(decodedData).toString("hex");
+                const destinationDomain = +hexData.slice(16, 18);
+                const targetAddress = "0x" + hexData.slice(192, 192 + 40);
+
+                info["destinationDomain"] = destinationDomain;
+                info["targetAddress"] = targetAddress;
+                info["contractAddress"] = SOLANA_MANUAL_CCTP_CONTRACT;
+              }
+            }
+
+            if (info.targetAddress && info.sourceAddress) {
+              this.solanaCctpCache.set(key, info);
+              console.log(`new solana cctp txn found for ${txHash}`);
+              ctx.set("Cache-Control", "public, max-age=31557600, s-maxage=31557600"); // 1 year cache
+              ctx.body = info;
+              return;
+            }
+          }
+        }
+      }
+
+      ctx.status = 404;
+      ctx.body = "solana cctp not found";
+    } catch (err) {
+      console.error("catch!!", err);
+      ctx.status = 404;
+      ctx.body = `error getting solana cctp: ${err}`;
     }
   };
 }

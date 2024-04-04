@@ -127,3 +127,5 @@ export const hexToUint8Array = (h: string): Uint8Array => {
 export const ensureHexPrefix = (x: string): string => {
   return x.substring(0, 2) !== "0x" ? `0x${x}` : x;
 };
+
+export const SOLANA_MANUAL_CCTP_CONTRACT = "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd";
