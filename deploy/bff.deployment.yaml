@@ -32,3 +32,6 @@ spec:
             - secretRef:
                 name: wormholescan-bff-rpc
                 optional: false
+            - secretRef:
+                name: wormholescan-bff-arkham
+                optional: false

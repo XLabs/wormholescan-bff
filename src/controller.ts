@@ -12,7 +12,13 @@ import {
   hexToUint8Array,
   makeSolanaRpcRequest,
 } from "./utils.js";
-import { AlgoAssetRequest, InfoRequest, SolanaCctpRequest, WrappedAssetRequest } from "../index.js";
+import {
+  AddressInfoRequest,
+  AlgoAssetRequest,
+  InfoRequest,
+  SolanaCctpRequest,
+  WrappedAssetRequest,
+} from "../index.js";
 import { EvmPlatform } from "@wormhole-foundation/connect-sdk-evm";
 import { SolanaPlatform } from "@wormhole-foundation/connect-sdk-solana";
 import {
@@ -37,6 +43,65 @@ const tokenList: any = fs.readFileSync(join(__dirname, "./tokenList.json"));
 const parsedTokens = JSON.parse(tokenList);
 
 export class ApiController {
+  protected addressInfoCache: LRUCache<string, any> = new LRUCache({
+    max: 10000,
+    allowStale: true,
+  });
+
+  getAdressInfo = async (ctx, next) => {
+    const request = { ...ctx.query } as unknown as AddressInfoRequest;
+    console.log("Request getAddressInfo with parameters:", JSON.stringify(request));
+
+    if (!request.address || !request.network) {
+      ctx.body = "Missing parameters, we need: address, network";
+      return;
+    }
+
+    try {
+      const { address, network } = request;
+
+      const key = `${network}-${address}`;
+
+      if (this.addressInfoCache.has(key)) {
+        const savedAddressInfo = this.addressInfoCache.get(key);
+        console.log(`FOUND EXISTING IN LOCAL CACHE: address info for ${key}`);
+
+        ctx.set("Cache-Control", "public, max-age=31557600, s-maxage=31557600"); // 1 year cache
+        ctx.body = savedAddressInfo;
+        return;
+      }
+
+      const arkhamResponse = await fetch(
+        `https://api.arkhamintelligence.com/intelligence/address/${address}/all`,
+        {
+          method: "GET",
+          headers: {
+            "API-Key": process.env.ARKHAM_API_KEY,
+          },
+        },
+      );
+
+      if (!arkhamResponse.ok) {
+        console.log("arkham has nothing for this address", arkhamResponse.status, arkhamResponse.statusText);
+        ctx.status = 404;
+        ctx.body = "Not found";
+        return;
+      }
+
+      const data = await arkhamResponse.json();
+
+      this.addressInfoCache.set(key, data);
+      console.log(`FOUND NEW: address info for ${address} in ${network}`);
+
+      ctx.set("Cache-Control", "public, max-age=31557600, s-maxage=31557600"); // 1 year cache
+      ctx.body = data;
+    } catch (e) {
+      console.error("error on getAddressInfo", e);
+      ctx.status = 404;
+      ctx.body = `error getAddressInfo: ${e}`;
+    }
+  };
+
   protected wrappedAssetCache: LRUCache<string, any> = new LRUCache({
     max: 10000,
     allowStale: true,

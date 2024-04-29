@@ -13,6 +13,11 @@ import { ApiController } from "./src/controller.js";
 
 dotenv.config();
 
+export interface AddressInfoRequest {
+  address: string;
+  network: Network;
+}
+
 export interface InfoRequest {
   address: string;
   amount: string;
@@ -72,6 +77,8 @@ async function runServer() {
   router.get("/getWrappedAsset", ctrl.getWrappedAsset);
 
   router.get("/getSolanaCctp", ctrl.getSolanaCctp);
+
+  router.get("/getAddressInfo", ctrl.getAdressInfo);
 
   const port = process.env.NODE_PORT ?? 8080;
 
