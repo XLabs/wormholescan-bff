@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { Chain, ChainId, Network } from "@wormhole-foundation/connect-sdk";
+import { Chain, ChainId, Network } from "@wormhole-foundation/sdk";
 
 const MAINNET_RPCS: { [key in Chain]?: string } = {
   Acala: "https://eth-rpc-acala.aca-api.network",
@@ -158,6 +158,14 @@ export const mainnetEnv: Environment = {
     {
       chainId: 30 as ChainId,
       rpcUrl: MAINNET_RPCS.Base || "",
+    },
+    {
+      chainId: 34 as ChainId,
+      rpcUrl: MAINNET_RPCS.Scroll || "",
+    },
+    {
+      chainId: 36 as ChainId,
+      rpcUrl: MAINNET_RPCS.Blast || "",
     },
   ],
 };

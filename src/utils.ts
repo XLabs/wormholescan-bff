@@ -1,4 +1,4 @@
-import { Network } from "@wormhole-foundation/connect-sdk";
+import { Network } from "@wormhole-foundation/sdk";
 import { JsonRpcProvider } from "ethers";
 
 export const MAX_BLOCK_DIFFERENCE = 1000; // Max difference between blocks

@@ -1,7 +1,7 @@
 import { Context, Next } from "koa";
 import { ethers } from "ethers";
 import { AlgoInfo, Asset, Transaction } from "./mongodb.js";
-import { ChainId, chainIdToChain, Network, toNative, Wormhole } from "@wormhole-foundation/connect-sdk";
+import { ChainId, chainIdToChain, Network, toNative, Wormhole } from "@wormhole-foundation/sdk";
 import algosdk from "algosdk";
 import { getChainInfo, getEthersProvider } from "./environment.js";
 import {
@@ -19,15 +19,10 @@ import {
   SolanaCctpRequest,
   WrappedAssetRequest,
 } from "../index.js";
-import { EvmPlatform } from "@wormhole-foundation/connect-sdk-evm";
-import { SolanaPlatform } from "@wormhole-foundation/connect-sdk-solana";
-import {
-  CosmwasmAddress,
-  CosmwasmChains,
-  CosmwasmPlatform,
-  Gateway,
-} from "@wormhole-foundation/connect-sdk-cosmwasm";
-import { AlgorandPlatform } from "@wormhole-foundation/connect-sdk-algorand";
+import { EvmPlatform } from "@wormhole-foundation/sdk-evm";
+import { SolanaPlatform } from "@wormhole-foundation/sdk-solana";
+import { CosmwasmAddress, CosmwasmChains, CosmwasmPlatform, Gateway } from "@wormhole-foundation/sdk-cosmwasm";
+import { AlgorandPlatform } from "@wormhole-foundation/sdk-algorand";
 import { getFullnodeUrl, SuiClient } from "@mysten/sui.js/client";
 import { getForeignAssetSui } from "./sui.js";
 import fs from "fs";

@@ -4,11 +4,11 @@ import Router from "koa-router";
 import cors from "@koa/cors";
 import mongoose from "mongoose";
 
-import { Network } from "@wormhole-foundation/connect-sdk";
-import "@wormhole-foundation/connect-sdk-evm-tokenbridge";
-import "@wormhole-foundation/connect-sdk-solana-tokenbridge";
-import "@wormhole-foundation/connect-sdk-cosmwasm-tokenbridge";
-import "@wormhole-foundation/connect-sdk-algorand-tokenbridge";
+import { Network } from "@wormhole-foundation/sdk";
+import "@wormhole-foundation/sdk-evm-tokenbridge";
+import "@wormhole-foundation/sdk-solana-tokenbridge";
+import "@wormhole-foundation/sdk-cosmwasm-tokenbridge";
+import "@wormhole-foundation/sdk-algorand-tokenbridge";
 import { ApiController } from "./src/controller.js";
 
 dotenv.config();
