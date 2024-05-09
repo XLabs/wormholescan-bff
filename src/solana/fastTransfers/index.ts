@@ -118,27 +118,23 @@ export async function fastTransferAuctionStatus(ctx: Context, next: Next) {
         txHash: signature,
       };
 
-      const ixDataHex = Buffer.from(executeOrderIx.data).toString("hex");
-      // only the execute_fast_order_cctp instruction emits a vaa
-      if (ixDataHex === IX_DATA_EXECUTE_CCTP) {
-        const sequence = tx.meta.logMessages.find(l => l.startsWith(SOLANA_SEQ_LOG))?.replace(SOLANA_SEQ_LOG, "");
-        if (!sequence) continue;
+      const sequence = tx.meta.logMessages.find(l => l.startsWith(SOLANA_SEQ_LOG))?.replace(SOLANA_SEQ_LOG, "");
+      if (!sequence) continue;
 
-        const accounts = tx.transaction.message.staticAccountKeys;
-        const whCoreProgramId = contracts.coreBridge.get(network, "Solana");
-        const whCoreIx = tx.meta.innerInstructions
-          .flatMap(i => i.instructions)
-          .find(i => accounts[i.programIdIndex].toBase58() === whCoreProgramId);
-        if (!whCoreIx) continue;
+      const accounts = tx.transaction.message.staticAccountKeys;
+      const whCoreProgramId = contracts.coreBridge.get(network, "Solana");
+      const whCoreIx = tx.meta.innerInstructions
+        .flatMap(i => i.instructions)
+        .find(i => accounts[i.programIdIndex].toBase58() === whCoreProgramId);
+      if (!whCoreIx) continue;
 
-        const emitter = new SolanaAddress(accounts[whCoreIx.accounts[2]]).toUniversalAddress();
+      const emitter = new SolanaAddress(accounts[whCoreIx.accounts[2]]).toUniversalAddress();
 
-        result.fill.vaa = {
-          emitterChain: 1,
-          emitterAddress: emitter.toString().replace("0x", ""),
-          sequence: sequence.toString(),
-        };
-      }
+      result.fill.vaa = {
+        emitterChain: 1,
+        emitterAddress: emitter.toString().replace("0x", ""),
+        sequence: sequence.toString(),
+      };
     }
   }
 
