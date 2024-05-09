@@ -55,7 +55,9 @@ Search for the auction status and fill transaction of given a Fast Transfer VAA.
 
 return example:
 
-```ts
+```bash
+$ curl -s localhost:9091/fastTransfers/auctionStatus\?network\=Testnet\&digest\=b81f6714970e7ea2bd09b3574b9cf3d857c5f60357afddd1f86361c2bf422927 | jq
+
 {
   "status": {
     "completed": {
@@ -92,5 +94,24 @@ return example:
       "sequence": "4492"
     }
   }
+}
+```
+
+`/fastTransfers/findOrderForFill`
+
+Search for the original fast transfer VAA given a fill transaction. Requires the following query parameters:
+
+- **network**: "MAINNET" | "TESTNET"
+- **fillTxHash**: fill transaction hash
+
+return example:
+
+```bash
+$ curl -s localhost:9091/fastTransfers/findOrderForFill\?network\=Testnet\&fillTxHash=F4owizxd2LsZJdjtsbk9ur1EwZAjRzPGRHGqB5pMt8thnp3v8wbBfobdgqDiMQVArMvBhJ2Z8xL3MdV5pUBiURh | jq
+
+{
+  "emitterChain": 10005,
+  "emitterAddress": "000000000000000000000000c1cf3501ef0b26c8a47759f738832563c7cb014a",
+  "sequence": "11357"
 }
 ```
