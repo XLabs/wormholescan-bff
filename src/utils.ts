@@ -73,14 +73,19 @@ export const findBlockRangeByTimestamp = async (ethersProvider: JsonRpcProvider,
   return null;
 };
 
+export function getSolanaRpc(network: Network) {
+  return network.toLowerCase() === "mainnet"
+    ? process.env.SOLANA_RPC_URL
+      ? process.env.SOLANA_RPC_URL
+      : "https://api.mainnet-beta.solana.com"
+    : process.env.SOLANA_DEVNET_RPC_URL
+      ? process.env.SOLANA_DEVNET_RPC_URL
+      : "https://api.devnet.solana.com";
+}
+
 // Function to make a Solana RPC request
 export async function makeSolanaRpcRequest(network: Network, method: string, params: any[] = []) {
-  const rpcUrl =
-    network.toLowerCase() === "mainnet"
-      ? process.env.SOLANA_RPC_URL
-        ? process.env.SOLANA_RPC_URL
-        : "https://api.mainnet-beta.solana.com"
-      : "https://api.devnet.solana.com";
+  const rpcUrl = getSolanaRpc(network);
 
   const rpcRequest = {
     jsonrpc: "2.0",

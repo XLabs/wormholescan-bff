@@ -22,6 +22,7 @@
   "author": "valentinoConti",
   "license": "ISC",
   "dependencies": {
+    "@coral-xyz/anchor": "0.30.0",
     "@koa/cors": "^5.0.0",
     "@mysten/sui.js": "^0.48.1",
     "@wormhole-foundation/sdk": "0.6.7",
@@ -33,6 +34,7 @@
     "@wormhole-foundation/sdk-evm": "0.6.7",
     "@wormhole-foundation/sdk-evm-tokenbridge": "0.6.7",
     "@wormhole-foundation/sdk-solana": "0.6.7",
+    "@wormhole-foundation/sdk-solana-core": "0.6.7",
     "@wormhole-foundation/sdk-solana-tokenbridge": "0.6.7",
     "algosdk": "^2.7.0",
     "bs58": "^5.0.0",

@@ -80,6 +80,8 @@ async function runServer() {
 
   router.get("/getAddressInfo", ctrl.getAdressInfo);
 
+  router.get("/fastTransfers/auctionStatus", ctrl.fastTransferAuctionStatus);
+
   const port = process.env.NODE_PORT ?? 8080;
 
   app.use(router.routes()).use(router.allowedMethods());
