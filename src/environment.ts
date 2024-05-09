@@ -23,7 +23,7 @@ const MAINNET_RPCS: { [key in Chain]?: string } = {
   Solana: "https://api.mainnet-beta.solana.com",
   Sui: "https://rpc.mainnet.sui.io",
   Terra: "https://terra-classic-fcd.publicnode.com",
-  Terra2: "https://phoenix-lcd.terra.dev",
+  Terra2: "https://lcd-terra.tfl.foundation",
   Xpla: "https://dimension-lcd.xpla.dev",
 };
 
