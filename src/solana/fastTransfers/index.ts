@@ -1,6 +1,6 @@
 import { Program, web3 } from "@coral-xyz/anchor";
 import { Network, contracts, encoding } from "@wormhole-foundation/sdk";
-import { SolanaAddress } from "@wormhole-foundation/sdk-solana";
+import { SolanaAddress, SolanaZeroAddress } from "@wormhole-foundation/sdk-solana";
 import { Context, Next } from "koa";
 import { getSolanaRpc } from "../../utils.js";
 import { MatchingEngine } from "./idl/matching_engine.js";
@@ -18,11 +18,17 @@ const IX_DATA_EXECUTE_LOCAL = "8cce1af3f34218f0";
 
 const SOLANA_SEQ_LOG = "Program log: Sequence: ";
 
-const programId = new web3.PublicKey("mPydpGUWxzERTNpyvTKdvS7v8kvw5sgwfiP8WQFrXVS");
-
 function deriveAuctionAddress(programId: web3.PublicKey, vaaHash: Array<number> | Buffer | Uint8Array) {
   return web3.PublicKey.findProgramAddressSync([Buffer.from("auction"), Buffer.from(vaaHash)], programId)[0];
 }
+
+const matchingEngineProgramId = (network: Network) => {
+  if (network === "Mainnet")
+    return new web3.PublicKey(process.env.LIQUIDITY_LAYER_PROGRAM_ID_MAINNET || SolanaZeroAddress);
+  return new web3.PublicKey(
+    process.env.LIQUIDITY_LAYER_PROGRAM_ID_TESTNET || "mPydpGUWxzERTNpyvTKdvS7v8kvw5sgwfiP8WQFrXVS",
+  );
+};
 
 export async function fastTransferAuctionStatus(ctx: Context, next: Next) {
   const request = { ...ctx.query } as unknown as FastTransferAuctionStatusRequest;
@@ -41,6 +47,7 @@ export async function fastTransferAuctionStatus(ctx: Context, next: Next) {
   }
 
   const network = normalizeNetwork(request.network);
+  const programId = matchingEngineProgramId(network);
 
   const rpc = getSolanaRpc(network);
   const connection = new web3.Connection(rpc);
