@@ -6,11 +6,16 @@ import { getSolanaRpc } from "../../utils.js";
 import { MatchingEngine } from "./idl/matching_engine.js";
 import MatchingEngineIDL from "./idl/matching_engine.json";
 import { Auction } from "./types.js";
-import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
+import { SolanaWormholeCore, deserializePostMessage } from "@wormhole-foundation/sdk-solana-core";
 
 export interface FastTransferAuctionStatusRequest {
   network: Network;
   digest: string;
+}
+
+export interface FastTransferFindOrderForFillRequest {
+  network: Network;
+  fillTxHash: string;
 }
 
 const IX_DATA_EXECUTE_CCTP = "b0261e11e64ece9d";
@@ -46,15 +51,7 @@ export async function fastTransferAuctionStatus(ctx: Context, next: Next) {
     return;
   }
 
-  const network = normalizeNetwork(request.network);
-  const programId = matchingEngineProgramId(network);
-
-  const rpc = getSolanaRpc(network);
-  const connection = new web3.Connection(rpc);
-  const program = new Program<MatchingEngine>(
-    { ...(MatchingEngineIDL as any), address: programId },
-    { connection },
-  );
+  const { connection, network, program, programId } = getProgram(request.network);
 
   const digest = Buffer.from(request.digest, "hex");
 
@@ -183,3 +180,75 @@ const mapTargetProtocol = (auction?: Auction) => {
 
 const normalizeNetwork = (network: string): Network =>
   network.toLowerCase() === "mainnet" ? "Mainnet" : "Testnet";
+
+export async function fastTransferFindOrderForFill(ctx: Context, next: Next) {
+  const request = { ...ctx.query } as unknown as FastTransferFindOrderForFillRequest;
+
+  if (!request.fillTxHash || !request.network) {
+    ctx.body = "Missing parameters, we need to have: fillTxHash, network";
+    ctx.status = 400;
+    return;
+  }
+
+  const { program, connection, network } = getProgram(request.network);
+
+  const tx = await connection.getTransaction(request.fillTxHash, {
+    commitment: "finalized",
+    maxSupportedTransactionVersion: 0,
+  });
+
+  if (!tx) {
+    ctx.body = "Fill transaction not found";
+    ctx.status = 404;
+    return;
+  }
+
+  const executeOrderIx = tx?.transaction.message.compiledInstructions.find(ix =>
+    [IX_DATA_EXECUTE_CCTP, IX_DATA_EXECUTE_LOCAL].includes(Buffer.from(ix.data).toString("hex")),
+  );
+  if (!executeOrderIx) {
+    ctx.body = "Transaction does not contain an execute order instruction";
+    ctx.status = 404;
+    return;
+  }
+
+  // check that the OrderExecuted event was emitted
+  const log = tx?.meta?.logMessages
+    ?.filter(l => l.startsWith("Program data: "))
+    .map(l => {
+      const cleantLog = l.substring("Program data: ".length).trim();
+      return program.coder.events.decode(cleantLog);
+    })
+    .find(l => l.name === "orderExecuted");
+  if (!log) {
+    ctx.body = "OrderExecuted event not emitted in transaction";
+    ctx.status = 404;
+    return;
+  }
+
+  const { data: vaaData } = await connection.getAccountInfo(log.data.vaa);
+  const vaa = deserializePostMessage(vaaData);
+  const result = {
+    emitterChain: vaa.emitterChain,
+    emitterAddress: vaa.emitterAddress.toString().replace("0x", ""),
+    sequence: vaa.sequence.toString(),
+  };
+
+  ctx.body = result;
+  ctx.status = 200;
+  return;
+}
+
+const getProgram = (requestedNetwork: string) => {
+  const network = normalizeNetwork(requestedNetwork);
+  const programId = matchingEngineProgramId(network);
+
+  const rpc = getSolanaRpc(network);
+  const connection = new web3.Connection(rpc);
+  const program = new Program<MatchingEngine>(
+    { ...(MatchingEngineIDL as any), address: programId },
+    { connection },
+  );
+
+  return { program, connection, network, programId };
+};

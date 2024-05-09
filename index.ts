@@ -81,6 +81,7 @@ async function runServer() {
   router.get("/getAddressInfo", ctrl.getAdressInfo);
 
   router.get("/fastTransfers/auctionStatus", ctrl.fastTransferAuctionStatus);
+  router.get("/fastTransfers/findOrderForFill", ctrl.fastTransferFindOrderForFill);
 
   const port = process.env.NODE_PORT ?? 8080;
 
