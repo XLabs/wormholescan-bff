@@ -45,3 +45,52 @@ return example:
   redeemTxHash: "0xd6e6b693ca820a5455afbf853f5f5ba1c73e9a6149a202a165275ce683637b1d";
 }
 ```
+
+`/fastTransfers/auctionStatus`
+
+Search for the auction status and fill transaction of given a Fast Transfer VAA. Requires the following query parameters:
+
+- **network**: "MAINNET" | "TESTNET"
+- **digest**: VAA digest (double keccak256 of the encoded body)
+
+return example:
+
+```ts
+{
+  "status": {
+    "completed": {
+      "slot": "297124098"
+    }
+  },
+  "targetProtocol": {
+    "cctp": {
+      "domain": 6
+    }
+  },
+  "vaaHash": "b81f6714970e7ea2bd09b3574b9cf3d857c5f60357afddd1f86361c2bf422927",
+  "vaaTimestamp": "1715028314",
+  "info": {
+    "configId": 2,
+    "custodyTokenBump": 254,
+    "vaaSequence": "11357",
+    "sourceChain": 10005,
+    "bestOfferAccount": "RoX5UsxwSMD2f3TmQA8aDsWqyYuyCGKZHwZEaDZHa6e",
+    "bestOfferAccountOwner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "initialOfferAccount": "GtDbUxUVor13vVJrshyuZvziMxoSbmg85zNmkfCGrswL",
+    "initialOfferAccountOwner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "startSlot": "297124091",
+    "amountIn": "10000000",
+    "securityDeposit": "2550000",
+    "offerPrice": "1425000",
+    "destinationAssetInfo": null
+  },
+  "fill": {
+    "txHash": "F4owizxd2LsZJdjtsbk9ur1EwZAjRzPGRHGqB5pMt8thnp3v8wbBfobdgqDiMQVArMvBhJ2Z8xL3MdV5pUBiURh",
+    "vaa": {
+      "emitterChain": 1,
+      "emitterAddress": "3e374fcd3aaf2ed067f3c93d21416855ec7916cfd2c2127bcbc68b3b1fb73077",
+      "sequence": "4492"
+    }
+  }
+}
+```

@@ -1,11 +1,12 @@
 import { Program, web3 } from "@coral-xyz/anchor";
-import { Network, encoding } from "@wormhole-foundation/sdk";
-import { deserializePostMessage } from "@wormhole-foundation/sdk-solana-core";
+import { Network, contracts, encoding } from "@wormhole-foundation/sdk";
+import { SolanaAddress } from "@wormhole-foundation/sdk-solana";
 import { Context, Next } from "koa";
 import { getSolanaRpc } from "../../utils.js";
 import { MatchingEngine } from "./idl/matching_engine.js";
 import MatchingEngineIDL from "./idl/matching_engine.json";
 import { Auction } from "./types.js";
+import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 
 export interface FastTransferAuctionStatusRequest {
   network: Network;
@@ -14,6 +15,8 @@ export interface FastTransferAuctionStatusRequest {
 
 const IX_DATA_EXECUTE_CCTP = "b0261e11e64ece9d";
 const IX_DATA_EXECUTE_LOCAL = "8cce1af3f34218f0";
+
+const SOLANA_SEQ_LOG = "Program log: Sequence: ";
 
 const programId = new web3.PublicKey("mPydpGUWxzERTNpyvTKdvS7v8kvw5sgwfiP8WQFrXVS");
 
@@ -37,7 +40,9 @@ export async function fastTransferAuctionStatus(ctx: Context, next: Next) {
     return;
   }
 
-  const rpc = getSolanaRpc(request.network);
+  const network = normalizeNetwork(request.network);
+
+  const rpc = getSolanaRpc(network);
   const connection = new web3.Connection(rpc);
   const program = new Program<MatchingEngine>(
     { ...(MatchingEngineIDL as any), address: programId },
@@ -52,6 +57,8 @@ export async function fastTransferAuctionStatus(ctx: Context, next: Next) {
   const result = {
     status: mapAuctionStatus(auction),
     targetProtocol: mapTargetProtocol(auction),
+    vaaHash: auction?.vaaHash ? Buffer.from(auction.vaaHash).toString("hex") : null,
+    vaaTimestamp: auction?.vaaTimestamp ? auction.vaaTimestamp.toString() : null,
     info: auction?.info
       ? {
           configId: auction.info.configId,
@@ -88,11 +95,12 @@ export async function fastTransferAuctionStatus(ctx: Context, next: Next) {
         maxSupportedTransactionVersion: 0,
       });
 
-      const ix = tx?.transaction.message.compiledInstructions.find(ix =>
+      const executeOrderIx = tx?.transaction.message.compiledInstructions.find(ix =>
         [IX_DATA_EXECUTE_CCTP, IX_DATA_EXECUTE_LOCAL].includes(Buffer.from(ix.data).toString("hex")),
       );
-      if (!ix) continue;
+      if (!executeOrderIx) continue;
 
+      // check that the OrderExecuted event was emitted
       const log = tx?.meta?.logMessages
         ?.filter(l => l.startsWith("Program data: "))
         .map(l => {
@@ -102,10 +110,31 @@ export async function fastTransferAuctionStatus(ctx: Context, next: Next) {
         .find(l => l.name === "orderExecuted");
       if (!log) continue;
 
-      // TODO: search for the vaa id on the tx accounts/log
       result.fill = {
         txHash: signature,
       };
+
+      const ixDataHex = Buffer.from(executeOrderIx.data).toString("hex");
+      // only the execute_fast_order_cctp instruction emits a vaa
+      if (ixDataHex === IX_DATA_EXECUTE_CCTP) {
+        const sequence = tx.meta.logMessages.find(l => l.startsWith(SOLANA_SEQ_LOG))?.replace(SOLANA_SEQ_LOG, "");
+        if (!sequence) continue;
+
+        const accounts = tx.transaction.message.staticAccountKeys;
+        const whCoreProgramId = contracts.coreBridge.get(network, "Solana");
+        const whCoreIx = tx.meta.innerInstructions
+          .flatMap(i => i.instructions)
+          .find(i => accounts[i.programIdIndex].toBase58() === whCoreProgramId);
+        if (!whCoreIx) continue;
+
+        const emitter = new SolanaAddress(accounts[whCoreIx.accounts[2]]).toUniversalAddress();
+
+        result.fill.vaa = {
+          emitterChain: 1,
+          emitterAddress: emitter.toString().replace("0x", ""),
+          sequence: sequence.toString(),
+        };
+      }
     }
   }
 
@@ -144,3 +173,6 @@ const mapTargetProtocol = (auction?: Auction) => {
   if (!!auction?.targetProtocol?.cctp) return { cctp: { domain: auction.targetProtocol.cctp.domain } };
   return { none: {} };
 };
+
+const normalizeNetwork = (network: string): Network =>
+  network.toLowerCase() === "mainnet" ? "Mainnet" : "Testnet";
