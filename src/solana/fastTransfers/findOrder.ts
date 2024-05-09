@@ -3,7 +3,7 @@ import { Context, Next } from "koa";
 import { FastTransferFindOrderForFillRequest } from "./types.js";
 import { buildProgramAndConnection, findExecuteOrderLog } from "./utils.js";
 
-export async function fastTransferFindOrderForFill(ctx: Context, next: Next) {
+export async function fastTransferFindOrder(ctx: Context, next: Next) {
   const request = { ...ctx.query } as unknown as FastTransferFindOrderForFillRequest;
 
   if (!request.fillTxHash || !request.network) {

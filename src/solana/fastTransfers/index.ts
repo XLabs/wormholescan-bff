@@ -1,4 +1,4 @@
 import { fastTransferAuctionStatus } from "./auctionStatus.js";
-import { fastTransferFindOrderForFill } from "./findOrder.js";
+import { fastTransferFindOrder } from "./findOrder.js";
 
-export { fastTransferAuctionStatus, fastTransferFindOrderForFill };
+export { fastTransferAuctionStatus, fastTransferFindOrder };

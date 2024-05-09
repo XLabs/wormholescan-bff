@@ -97,9 +97,9 @@ $ curl -s localhost:9091/fastTransfers/auctionStatus\?network\=Testnet\&digest\=
 }
 ```
 
-`/fastTransfers/findOrderForFill`
+`/fastTransfers/findOrder`
 
-Search for the original fast transfer VAA given a fill transaction. Requires the following query parameters:
+Search for the original fast transfer order placement VAA given a fill transaction. Requires the following query parameters:
 
 - **network**: "MAINNET" | "TESTNET"
 - **fillTxHash**: fill transaction hash
@@ -107,7 +107,7 @@ Search for the original fast transfer VAA given a fill transaction. Requires the
 return example:
 
 ```bash
-$ curl -s localhost:9091/fastTransfers/findOrderForFill\?network\=Testnet\&fillTxHash=F4owizxd2LsZJdjtsbk9ur1EwZAjRzPGRHGqB5pMt8thnp3v8wbBfobdgqDiMQVArMvBhJ2Z8xL3MdV5pUBiURh | jq
+$ curl -s localhost:9091/fastTransfers/findOrder\?network\=Testnet\&fillTxHash=F4owizxd2LsZJdjtsbk9ur1EwZAjRzPGRHGqB5pMt8thnp3v8wbBfobdgqDiMQVArMvBhJ2Z8xL3MdV5pUBiURh | jq
 
 {
   "emitterChain": 10005,
