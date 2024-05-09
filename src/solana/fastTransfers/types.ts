@@ -1,6 +1,17 @@
-// from https://github.com/wormhole-foundation/example-liquidity-layer/blob/e7a987323756218a5c4d6d8ebc4a00a92291a935/solana/ts/src/matchingEngine/state/Auction.ts
 import { BN, web3 } from "@coral-xyz/anchor";
+import { Network } from "@wormhole-foundation/sdk";
 
+export interface FastTransferAuctionStatusRequest {
+  network: Network;
+  digest: string;
+}
+
+export interface FastTransferFindOrderForFillRequest {
+  network: Network;
+  fillTxHash: string;
+}
+
+// from https://github.com/wormhole-foundation/example-liquidity-layer/blob/e7a987323756218a5c4d6d8ebc4a00a92291a935/solana/ts/src/matchingEngine/state/Auction.ts
 export type MessageProtocol = {
   local?: { programId: PublicKey };
   cctp?: { domain: number };
