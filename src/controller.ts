@@ -30,6 +30,7 @@ import { LRUCache } from "lru-cache";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import base58 from "bs58";
+import { fastTransferAuctionStatus, fastTransferFindOrder } from "./solana/fastTransfers/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -797,4 +798,7 @@ export class ApiController {
       ctx.body = `error getting solana cctp: ${err}`;
     }
   };
+
+  fastTransferAuctionStatus = fastTransferAuctionStatus;
+  fastTransferFindOrder = fastTransferFindOrder;
 }
