@@ -3,8 +3,15 @@ import { Network } from "@wormhole-foundation/sdk";
 import { SolanaZeroAddress } from "@wormhole-foundation/sdk-solana";
 import { getSolanaRpc } from "../../utils.js";
 import { MatchingEngine } from "./idl/matching_engine.js";
-import MatchingEngineIDL from "./idl/matching_engine.json";
+// import MatchingEngineIDL from "./idl/matching_engine.json";
 import { Auction } from "./types.js";
+import fs from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const MatchingEngineIDL: any = fs.readFileSync(join(__dirname, "./idl/matching_engine.json"));
 
 export const IX_DATA_EXECUTE_CCTP = "b0261e11e64ece9d";
 export const IX_DATA_EXECUTE_LOCAL = "8cce1af3f34218f0";

@@ -11,6 +11,7 @@ RUN yarn build
 RUN npx tsx src/updateTokenlist.ts
 RUN yarn prettier --write src/tokenList.json
 RUN cp src/tokenList.json build/src/
+RUN cp src/solana/fastTransfers/idl/matching_engine.json build/src/solana/fastTransfers/idl/
 #### END Build App ####
 
 FROM node:lts-alpine3.19@sha256:e96618520c7db4c3e082648678ab72a49b73367b9a1e7884cf75ac30a198e454 as final
