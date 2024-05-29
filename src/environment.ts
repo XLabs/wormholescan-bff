@@ -8,6 +8,7 @@ const MAINNET_RPCS: { [key in Chain]?: string } = {
   Arbitrum: "https://rpc.ankr.com/arbitrum",
   Avalanche: "https://rpc.ankr.com/avalanche",
   Base: "https://mainnet.base.org",
+  Blast: "https://rpc.ankr.com/blast",
   Bsc: "https://1rpc.io/bnb",
   Celo: "https://forno.celo.org",
   Ethereum: "https://rpc.ankr.com/eth",
@@ -20,28 +21,32 @@ const MAINNET_RPCS: { [key in Chain]?: string } = {
   Oasis: "https://emerald.oasis.dev",
   Optimism: "https://rpc.ankr.com/optimism",
   Polygon: "https://rpc.ankr.com/polygon",
+  Scroll: "https://rpc.ankr.com/scroll",
   Solana: "https://api.mainnet-beta.solana.com",
   Sui: "https://rpc.mainnet.sui.io",
   Terra: "https://terra-classic-fcd.publicnode.com",
   Terra2: "https://lcd-terra.tfl.foundation",
+  Xlayer: "https://xlayerrpc.okx.com",
   Xpla: "https://dimension-lcd.xpla.dev",
 };
 
 const TESTNET_RPCS: { [key in Chain]?: string } = {
   Arbitrum: "https://goerli-rollup.arbitrum.io/rpc",
+  ArbitrumSepolia: "https://sepolia-rollup.arbitrum.io/rpc",
   Avalanche: "https://api.avax-test.network/ext/bc/C/rpc",
   Base: "https://goerli.base.org",
+  BaseSepolia: "https://sepolia.base.org",
+  Blast: "http://testnet-rpc.blastblockchain.com",
   Bsc: "https://data-seed-prebsc-2-s3.binance.org:8545",
   Celo: "https://alfajores-forno.celo-testnet.org",
   Ethereum: "https://rpc.ankr.com/eth_goerli",
   Moonbeam: "https://rpc.api.moonbase.moonbeam.network",
   Optimism: "https://goerli.optimism.io",
-  Polygon: "https://rpc.ankr.com/polygon_mumbai",
-
-  ArbitrumSepolia: "https://sepolia-rollup.arbitrum.io/rpc",
-  BaseSepolia: "https://sepolia.base.org",
-  Sepolia: "https://rpc.sepolia.org",
   OptimismSepolia: "https://sepolia.optimism.io",
+  Polygon: "https://rpc.ankr.com/polygon_mumbai",
+  Scroll: "https://rpc.ankr.com/scroll_sepolia_testnet",
+  Sepolia: "https://rpc.sepolia.org",
+  Xlayer: "https://xlayertestrpc.okx.com",
 };
 
 export type Environment = {
@@ -92,6 +97,18 @@ export const testnetEnv: Environment = {
     {
       chainId: 24 as ChainId,
       rpcUrl: TESTNET_RPCS.Optimism || "",
+    },
+    {
+      chainId: 34 as ChainId,
+      rpcUrl: TESTNET_RPCS.Scroll || "",
+    },
+    {
+      chainId: 36 as ChainId,
+      rpcUrl: TESTNET_RPCS.Blast || "",
+    },
+    {
+      chainId: 37 as ChainId,
+      rpcUrl: TESTNET_RPCS.Xlayer || "",
     },
     {
       chainId: 10002 as ChainId,
@@ -166,6 +183,10 @@ export const mainnetEnv: Environment = {
     {
       chainId: 36 as ChainId,
       rpcUrl: MAINNET_RPCS.Blast || "",
+    },
+    {
+      chainId: 37 as ChainId,
+      rpcUrl: MAINNET_RPCS.Xlayer || "",
     },
   ],
 };
