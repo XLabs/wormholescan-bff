@@ -31,19 +31,20 @@ const MAINNET_RPCS: { [key in Chain]?: string } = {
 };
 
 const TESTNET_RPCS: { [key in Chain]?: string } = {
-  Arbitrum: "https://goerli-rollup.arbitrum.io/rpc",
+  // Arbitrum: "https://goerli-rollup.arbitrum.io/rpc",
   ArbitrumSepolia: "https://sepolia-rollup.arbitrum.io/rpc",
   Avalanche: "https://api.avax-test.network/ext/bc/C/rpc",
-  Base: "https://goerli.base.org",
+  // Base: "https://goerli.base.org",
   BaseSepolia: "https://sepolia.base.org",
-  Blast: "http://testnet-rpc.blastblockchain.com",
+  Blast: "https://sepolia.blast.io",
   Bsc: "https://data-seed-prebsc-2-s3.binance.org:8545",
   Celo: "https://alfajores-forno.celo-testnet.org",
-  Ethereum: "https://rpc.ankr.com/eth_goerli",
+  // Ethereum: "https://rpc.ankr.com/eth_goerli",
   Moonbeam: "https://rpc.api.moonbase.moonbeam.network",
-  Optimism: "https://goerli.optimism.io",
+  // Optimism: "https://goerli.optimism.io",
   OptimismSepolia: "https://sepolia.optimism.io",
-  Polygon: "https://rpc.ankr.com/polygon_mumbai",
+  // Polygon: "https://rpc.ankr.com/polygon_mumbai",
+  PolygonSepolia: "https://rpc.ankr.com/polygon_amoy",
   Scroll: "https://rpc.ankr.com/scroll_sepolia_testnet",
   Sepolia: "https://rpc.sepolia.org",
   Xlayer: "https://xlayertestrpc.okx.com",
@@ -62,18 +63,18 @@ export type ChainInfo = {
 export const testnetEnv: Environment = {
   network: "Testnet",
   chainInfos: [
-    {
-      chainId: 2 as ChainId,
-      rpcUrl: TESTNET_RPCS.Ethereum || "",
-    },
+    // {
+    //   chainId: 2 as ChainId,
+    //   rpcUrl: TESTNET_RPCS.Ethereum || "",
+    // },
     {
       chainId: 4 as ChainId,
       rpcUrl: TESTNET_RPCS.Bsc || "",
     },
-    {
-      chainId: 5 as ChainId,
-      rpcUrl: TESTNET_RPCS.Polygon || "",
-    },
+    // {
+    //   chainId: 5 as ChainId,
+    //   rpcUrl: TESTNET_RPCS.Polygon || "",
+    // },
     {
       chainId: 6 as ChainId,
       rpcUrl: TESTNET_RPCS.Avalanche || "",
@@ -86,18 +87,18 @@ export const testnetEnv: Environment = {
       chainId: 16 as ChainId,
       rpcUrl: TESTNET_RPCS.Moonbeam || "",
     },
-    {
-      chainId: 30 as ChainId,
-      rpcUrl: TESTNET_RPCS.Base || "",
-    },
-    {
-      chainId: 23 as ChainId,
-      rpcUrl: TESTNET_RPCS.Arbitrum || "",
-    },
-    {
-      chainId: 24 as ChainId,
-      rpcUrl: TESTNET_RPCS.Optimism || "",
-    },
+    // {
+    //   chainId: 30 as ChainId,
+    //   rpcUrl: TESTNET_RPCS.Base || "",
+    // },
+    // {
+    //   chainId: 23 as ChainId,
+    //   rpcUrl: TESTNET_RPCS.Arbitrum || "",
+    // },
+    // {
+    //   chainId: 24 as ChainId,
+    //   rpcUrl: TESTNET_RPCS.Optimism || "",
+    // },
     {
       chainId: 34 as ChainId,
       rpcUrl: TESTNET_RPCS.Scroll || "",
@@ -125,6 +126,10 @@ export const testnetEnv: Environment = {
     {
       chainId: 10005 as ChainId,
       rpcUrl: TESTNET_RPCS.OptimismSepolia || "",
+    },
+    {
+      chainId: 10007 as ChainId,
+      rpcUrl: TESTNET_RPCS.PolygonSepolia || "",
     },
   ],
 };
@@ -192,14 +197,30 @@ export const mainnetEnv: Environment = {
 };
 
 const mainnetProviders = {};
-mainnetEnv.chainInfos.forEach(chain => {
-  mainnetProviders[chain.chainId] = new ethers.JsonRpcProvider(chain.rpcUrl);
-});
+for (const chain of mainnetEnv.chainInfos) {
+  const provider = new ethers.JsonRpcProvider(chain.rpcUrl);
+
+  try {
+    await provider._detectNetwork();
+    mainnetProviders[chain.chainId] = provider;
+  } catch (err) {
+    console.log("err for mainnet provider in chain", chain.chainId);
+    continue;
+  }
+}
 
 const testnetProviders = {};
-testnetEnv.chainInfos.forEach(chain => {
-  testnetProviders[chain.chainId] = new ethers.JsonRpcProvider(chain.rpcUrl);
-});
+for (const chain of testnetEnv.chainInfos) {
+  const provider = new ethers.JsonRpcProvider(chain.rpcUrl);
+
+  try {
+    await provider._detectNetwork();
+    testnetProviders[chain.chainId] = provider;
+  } catch (err) {
+    console.log("err for testnet provider in chain", chain.chainId);
+    continue;
+  }
+}
 
 export function getEthersProvider(network: string, chainId: ChainId) {
   // if (chainInfo?.rpcUrl) return new ethers.JsonRpcProvider(chainInfo.rpcUrl);

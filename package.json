@@ -1,6 +1,6 @@
 {
   "name": "wormholescan-utils",
-  "version": "0.0.19",
+  "version": "0.0.20r1",
   "description": "wormholescan rpc utilities",
   "main": "index.js",
   "type": "module",
